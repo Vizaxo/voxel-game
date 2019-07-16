@@ -16,4 +16,9 @@ makeWindow = do
       GL.loadIdentity
       GL.ortho2D 0 (realToFrac w) (realToFrac h) 0
 
-  forever (GLFW.swapBuffers)
+mainLoop :: IO ()
+mainLoop = do
+  GL.clearColor $= Color4 0 0 0 0
+  GL.clear [GL.ColorBuffer]
+
+  GLFW.swapBuffers
