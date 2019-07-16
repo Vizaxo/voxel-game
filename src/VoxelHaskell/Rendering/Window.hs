@@ -1,6 +1,5 @@
 module VoxelHaskell.Rendering.Window where
 
-import Control.Monad
 import Graphics.Rendering.OpenGL as GL
 import Graphics.UI.GLFW as GLFW
 
@@ -14,10 +13,29 @@ mainLoop = do
   GL.clearColor $= Color4 0 0 0 0
   GL.clear [GL.ColorBuffer]
 
-  GL.renderPrimitive GL.Triangles $
-     mapM_ (\(x, y, z) -> vertex $ GL.Vertex3 x y z) myPoints
+  renderBlock (Block 0 0 0 (Color3 1 0 0))
+  renderBlock (Block 1 0 0 (Color3 0 1 0))
 
   GLFW.swapBuffers
 
-myPoints :: [(GL.GLfloat, GL.GLfloat, GL.GLfloat)]
-myPoints = [ (sin (2*pi*k/12), cos (2*pi*k/12), 0) | k <- [1..12] ]
+data Block = Block
+  { x :: Float
+  , y :: Float
+  , z :: Float
+  , colour :: Color3 Float
+  }
+
+renderBlock :: Block -> IO ()
+renderBlock (Block x y z rgb) = do
+  GL.renderPrimitive GL.Quads $ do
+    let vertex3f x y z = vertex $ Vertex3 x y z
+    color rgb
+    vertex3f (x - 0.5) (y - 0.5) z
+    vertex3f (x - 0.5) (y + 0.5) z
+    vertex3f (x + 0.5) (y + 0.5) z
+    vertex3f (x + 0.5) (y - 0.5) z
+
+    vertex3f (x - 0.5) (y - 0.5) z
+    vertex3f (x - 0.5) (y + 0.5) z
+    vertex3f (x + 0.5) (y + 0.5) z
+    vertex3f (x + 0.5) (y - 0.5) z
