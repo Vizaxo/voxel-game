@@ -9,16 +9,15 @@ makeWindow = do
   GLFW.openWindow (GL.Size 400 400) [] GLFW.Window
   GLFW.windowTitle $= "GLFW Demo"
 
-  GLFW.windowSizeCallback $= \ size@(GL.Size w h) ->
-    do
-      GL.viewport   $= (GL.Position 0 0, size)
-      GL.matrixMode $= GL.Projection
-      GL.loadIdentity
-      GL.ortho2D 0 (realToFrac w) (realToFrac h) 0
-
 mainLoop :: IO ()
 mainLoop = do
   GL.clearColor $= Color4 0 0 0 0
   GL.clear [GL.ColorBuffer]
 
+  GL.renderPrimitive GL.Triangles $
+     mapM_ (\(x, y, z) -> vertex $ GL.Vertex3 x y z) myPoints
+
   GLFW.swapBuffers
+
+myPoints :: [(GL.GLfloat, GL.GLfloat, GL.GLfloat)]
+myPoints = [ (sin (2*pi*k/12), cos (2*pi*k/12), 0) | k <- [1..12] ]
