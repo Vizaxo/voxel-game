@@ -5,9 +5,25 @@ license:             GPL-3
 dependencies:
 - base >= 4.7 && < 5
 - tasty
+- GLFW
+- OpenGL
+
+default-extensions:
+- LambdaCase
 
 library:
   source-dirs: src
+
+executables:
+  voxel-haskell:
+    source-dirs:         app
+    main:                VoxelHaskell/Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - voxel-haskell
 
 tests:
   voxel-haskell-test:
