@@ -13,8 +13,24 @@ makeWindow = do
 
   GL.depthFunc $= Just Less
   GL.loadIdentity
-  GL.perspective 70 1 0.1 10
-  GL.translate (Vector3 0 0 (-2 ::Float))
+  GL.perspective 70 1 0.1 100
+  GL.translate (Vector3 0 0 (-10 ::Float))
+  GL.rotate 30 (Vector3 1 0 (0 :: Float))
+
+black :: Color3 Float
+black = Color3 0 0 0
+
+basePlane :: Int -> [Block]
+basePlane size =
+  [ Block x y z black
+  | x <- [-size..size]
+  , y <- [0]
+  , z <- [-size..size]
+  ]
+
+blocks :: [Block]
+blocks = basePlane 5
+  <> [Block 0 1 0 black]
 
 mainLoop :: IO ()
 mainLoop = do
@@ -22,24 +38,22 @@ mainLoop = do
   GL.clear [GL.ColorBuffer, GL.DepthBuffer]
   GL.rotate (-1) $ Vector3 0 1 (0 :: Float)
 
-  preservingMatrix $ do
-    GL.scale (0.3 :: Float) 0.3 0.3
-    GL.rotate (-30) $ Vector3 1 0 (0 :: Float)
-    renderBlock (Block 0 0 0 (Color3 1 0 0))
-    GL.translate (Vector3 1 1 (1::Float))
-    renderBlock (Block 0 0 0 (Color3 1 0 0))
+  mapM_ renderBlock blocks
 
   GLFW.swapBuffers
 
 data Block = Block
-  { x :: Float
-  , y :: Float
-  , z :: Float
+  { x :: Int
+  , y :: Int
+  , z :: Int
   , colour :: Color3 Float
   }
 
+toFloat :: Integral n => n -> Float
+toFloat = fromIntegral
+
 renderBlock :: Block -> IO ()
-renderBlock (Block x y z rgb) = do
+renderBlock (Block (toFloat -> x) (toFloat -> y) (toFloat -> z) rgb) = do
   GL.renderPrimitive GL.Quads $ do
     let vertex3f x y z = vertex $ Vertex3 x y z
       -- front
@@ -69,14 +83,14 @@ renderBlock (Block x y z rgb) = do
       vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
 
       --bottom
-      color (Color3 (1 :: Float) 0.5 0.5)
+      color (Color3 (0.5 :: Float) 0.5 0.5)
       vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
       vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
       vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
       vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
 
       --top
-      color (Color3 (0.5 :: Float) 0.5 0.5)
+      color (Color3 (1 :: Float) 0.5 0.5)
       vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
       vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
       vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
