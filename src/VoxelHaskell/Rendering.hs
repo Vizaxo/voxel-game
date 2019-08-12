@@ -1,5 +1,6 @@
 module VoxelHaskell.Rendering where
 
+import Control.Applicative
 import Control.Monad.State
 import Control.Lens
 import qualified Data.Map as M
@@ -80,15 +81,12 @@ initOGL = do
 
   pure (RenderState vao vbo vertexAttribute shaderProg)
 
+vertices :: V.Vector Float
+vertices = packWorld $ renderWorld initialWorld
+
 renderFrame :: (MonadState (GameState, RenderState) m, MonadIO m) => m ()
 renderFrame = do
   (gameState, renderState) <- get
-  --liftIO $ print (gameState ^. playerPos, gameState ^. playerAngle)
-
-  let vertices = V.fromList [ -0.5, -0.5, 0
-                            , 0.5, -0.5, 0
-                            , 0, 0.5, 0
-                            ] :: V.Vector Float
 
   liftIO $ GL.loadIdentity
   liftIO $ GL.perspective 70 1 0.1 100
@@ -105,70 +103,36 @@ renderFrame = do
     , v
     , GL.StaticDraw)
 
-
   GL.vertexAttribPointer (renderState ^. vertexAttribute) $=
     (GL.ToFloat, GL.VertexArrayDescriptor 3 GL.Float 0 nullPtr)
   GL.vertexAttribArray (renderState ^. vertexAttribute) $= GL.Enabled
 
   GL.currentProgram $= Just (renderState ^. shaderProg)
 
-  liftIO $ GL.drawArrays GL.Triangles 0 3
+  liftIO $ GL.drawArrays GL.Triangles 0 (fromIntegral $ V.length vertices)
   liftIO $ GLFW.swapBuffers
 
 toFloat :: Integral n => n -> Float
 toFloat = fromIntegral
 
-renderWorld :: MonadIO m => World -> m ()
+packWorld :: [Vector3 Float] -> V.Vector Float
+packWorld = V.fromList . concatMap (\(Vector3 x y z) -> [x, y, z])
+
+renderWorld :: World -> [Vector3 Float]
 renderWorld (World getChunk) =
-  let chunksToRender = [Vector3 x y z | x <- [-1..1], y <- [-1..100], z <- [-1..1]]
+  --let chunksToRender = [Vector3 x y z | x <- [-1..1], y <- [-1..100], z <- [-1..1]]
+  let chunksToRender = [Vector3 0 (-1) 0]
+  in flip concatMap chunksToRender $ \pos ->
+    (liftA2 (+) (toFloat <$> ((* 16) <$> pos))) <$> renderChunk (getChunk pos)
 
-  in flip mapM_ chunksToRender $ \pos ->
-  liftIO $ GL.preservingMatrix $ do
-    GL.translate ((toFloat . (*16)) <$> pos)
-    renderChunk (getChunk pos)
+renderChunk :: Chunk -> [Vector3 Float]
+renderChunk (Chunk (M.toList -> blocks)) =
+  flip concatMap blocks $ \(pos, block) ->
+    (liftA2 (+) (toFloat <$> pos)) <$> renderBlock pos block
 
-renderChunk :: MonadIO m => Chunk -> m ()
-renderChunk (Chunk (M.toList -> blocks)) = flip mapM_ blocks $ \(pos, block) ->
-  liftIO $ renderBlock pos block
-
-renderBlock :: Vector3 Int -> Block -> IO ()
-renderBlock (Vector3 (toFloat -> x) (toFloat -> y) (toFloat -> z)) (Block rgb) = do
-  GL.renderPrimitive GL.Quads $ do
-    let vertex3f x y z = GL.vertex $ Vertex3 x y z
-    GL.color (Color3 (0 :: Float) 1 0)
-    vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
-
-    GL.color (Color3 (1 :: Float) 0 0)
-    vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
-
-    GL.color (Color3 (0 :: Float) 0 1)
-    vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
-
-    GL.color (Color3 (0.5 :: Float) 0 0.5)
-    vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
-    vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
-
-    --bottom
-    GL.color (Color3 (0.5 :: Float) 0.5 0.5)
-    vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
-    vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
-    vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
-
-    --top
-    GL.color (Color3 (1 :: Float) 0.5 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
-    vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
-    vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
+renderBlock :: Vector3 Int -> Block -> [Vector3 Float]
+renderBlock pos block =
+  [ Vector3 (-0.5) (-0.5) 0.5
+  , Vector3 0.5 (-0.5) 0.5
+  , Vector3 0.5 0.5 0.5
+  ]
