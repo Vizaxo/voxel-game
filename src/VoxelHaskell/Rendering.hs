@@ -20,7 +20,7 @@ makeWindow = do
   GLFW.windowTitle $= "GLFW Demo"
 
   GL.polygonMode $= (GL.Fill, GL.Fill)
-  GL.cullFace $= Nothing
+  GL.cullFace $= Just GL.Back
   GL.depthFunc $= Just GL.Less
 
   GLFW.disableSpecial GLFW.MouseCursor
@@ -61,10 +61,10 @@ renderBlock (Vector3 (toFloat -> x) (toFloat -> y) (toFloat -> z)) (Block rgb) =
     let vertex3f x y z = GL.vertex $ Vertex3 x y z
     GL.preservingMatrix $ do
       GL.color (Color3 (0 :: Float) 1 0)
-      vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
-      vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
-      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
       vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
+      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
+      vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
+      vertex3f (x - 0.5) (y - 0.5) (z + 0.5)
 
       GL.color (Color3 (1 :: Float) 0 0)
       vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
@@ -79,10 +79,10 @@ renderBlock (Vector3 (toFloat -> x) (toFloat -> y) (toFloat -> z)) (Block rgb) =
       vertex3f (x - 0.5) (y - 0.5) (z - 0.5)
 
       GL.color (Color3 (0.5 :: Float) 0 0.5)
-      vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
-      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
-      vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
       vertex3f (x + 0.5) (y - 0.5) (z - 0.5)
+      vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
+      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
+      vertex3f (x + 0.5) (y - 0.5) (z + 0.5)
 
       --bottom
       GL.color (Color3 (0.5 :: Float) 0.5 0.5)
@@ -93,7 +93,7 @@ renderBlock (Vector3 (toFloat -> x) (toFloat -> y) (toFloat -> z)) (Block rgb) =
 
       --top
       GL.color (Color3 (1 :: Float) 0.5 0.5)
-      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
-      vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
-      vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
       vertex3f (x + 0.5) (y + 0.5) (z - 0.5)
+      vertex3f (x - 0.5) (y + 0.5) (z - 0.5)
+      vertex3f (x - 0.5) (y + 0.5) (z + 0.5)
+      vertex3f (x + 0.5) (y + 0.5) (z + 0.5)
