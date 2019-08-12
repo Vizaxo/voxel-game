@@ -17,6 +17,7 @@ default-extensions:
 - FlexibleContexts
 - MultiParamTypeClasses
 - TemplateHaskell
+- TupleSections
 
 library:
   source-dirs: src

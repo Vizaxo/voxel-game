@@ -11,7 +11,7 @@ data Chunk = Chunk
   }
 
 data World = World
-  { _chunks :: Map (Vector3 Int) Chunk
+  { _getChunk :: Vector3 Int -> Chunk
   }
 
 emptyChunk :: Chunk
@@ -26,7 +26,5 @@ fullChunk = Chunk $ M.fromList
   ]
 
 initialWorld :: World
-initialWorld = World $ M.fromList
-  [ (Vector3 0 0 0, fullChunk)
-  , (Vector3 0 0 1, fullChunk)
-  ]
+initialWorld = World $ \(Vector3 x y z) ->
+  if y >= 0 then emptyChunk else fullChunk
