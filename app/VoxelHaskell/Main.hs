@@ -1,9 +1,6 @@
 module Main where
 
-import VoxelHaskell.Rendering.Initialisation
-import VoxelHaskell.Rendering.Window
+import VoxelHaskell.GameMain
 
-main = do
-  initRendering
-  makeWindow
-  game
+main :: IO ()
+main = gameMain
