@@ -1,5 +1,6 @@
 module VoxelHaskell.GameMain where
 
+import Control.Lens
 import Control.Monad.State
 
 import VoxelHaskell.GameState
@@ -10,12 +11,12 @@ gameMain :: IO ()
 gameMain = do
   initRendering
   makeWindow
-  game
+  renderState <- initOGL
+  void $ liftIO $ runStateT (forever mainLoop) (initialGameState, renderState)
 
-game :: IO ()
-game = void $ runStateT (forever mainLoop) initialGameState
-
-mainLoop :: (MonadState GameState m, MonadIO m) => m ()
+mainLoop :: (MonadState (GameState, RenderState) m, MonadIO m) => m ()
 mainLoop = do
-  handleInput
+  (gameState, _) <- get
+  gameState' <- execStateT handleInput gameState
+  modify (set _1 gameState')
   renderFrame

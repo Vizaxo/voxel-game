@@ -10,6 +10,8 @@ dependencies:
 - mtl
 - lens
 - containers
+- vector
+- text
 
 default-extensions:
 - LambdaCase
