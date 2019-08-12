@@ -7,9 +7,15 @@ dependencies:
 - tasty
 - GLFW
 - OpenGL
+- mtl
+- lens
 
 default-extensions:
 - LambdaCase
+- ViewPatterns
+- FlexibleContexts
+- MultiParamTypeClasses
+- TemplateHaskell
 
 library:
   source-dirs: src

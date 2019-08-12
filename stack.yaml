@@ -8,7 +8,7 @@ extra-deps:
 
 nix:
   enable: true
-  packages: [ freeglut x11 mesa ]
+  packages: [ freeglut x11 mesa xorg.libXext xorg.libXxf86vm xorg.libX11 libGL ]
 
 ghc-options:
   "$locals": -fwarn-incomplete-patterns -fwarn-unused-imports
