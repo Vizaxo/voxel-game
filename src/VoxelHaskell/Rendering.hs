@@ -2,12 +2,14 @@ module VoxelHaskell.Rendering where
 
 import Control.Monad.State
 import Control.Lens
+import qualified Data.Map as M
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL (Vector3(..), Color3(..), Vertex3(..), Color4(..), ($=))
 import qualified Graphics.UI.GLFW as GLFW
 
 import VoxelHaskell.Block
 import VoxelHaskell.GameState
+import VoxelHaskell.World
 
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
@@ -35,15 +37,26 @@ renderFrame = do
   liftIO $ GL.clearColor $= Color4 0 0 0 0
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
-  mapM_ (liftIO . renderBlock) blocks
+  renderWorld (state ^. world)
+  --mapM_ (liftIO . renderBlock) blocks
 
   liftIO GLFW.swapBuffers
 
 toFloat :: Integral n => n -> Float
 toFloat = fromIntegral
 
-renderBlock :: Block -> IO ()
-renderBlock (Block (toFloat -> x) (toFloat -> y) (toFloat -> z) rgb) = do
+renderWorld :: MonadIO m => World -> m ()
+renderWorld (World (M.toList -> chunks)) = flip mapM_ chunks $ \(pos, chunk) ->
+  liftIO $ GL.preservingMatrix $ do
+    GL.translate ((toFloat . (*16)) <$> pos)
+    renderChunk chunk
+
+renderChunk :: MonadIO m => Chunk -> m ()
+renderChunk (Chunk (M.toList -> blocks)) = flip mapM_ blocks $ \(pos, block) ->
+  liftIO $ renderBlock pos block
+
+renderBlock :: Vector3 Int -> Block -> IO ()
+renderBlock (Vector3 (toFloat -> x) (toFloat -> y) (toFloat -> z)) (Block rgb) = do
   GL.renderPrimitive GL.Quads $ do
     let vertex3f x y z = GL.vertex $ Vertex3 x y z
     GL.preservingMatrix $ do
