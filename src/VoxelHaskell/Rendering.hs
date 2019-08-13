@@ -23,6 +23,7 @@ data RenderState = RenderState
   { _vao :: GL.VertexArrayObject
   , _vbo :: GL.BufferObject
   , _shaderProg :: GL.Program
+  , _cachedMesh :: Maybe (V.Vector Float)
   }
 makeLenses ''RenderState
 
@@ -83,10 +84,7 @@ initOGL = do
   GL.linkProgram shaderProg
   GL.currentProgram $= Just shaderProg
 
-  pure (RenderState vao vbo shaderProg)
-
-vertices :: V.Vector Float
-vertices = packWorld $ renderWorld initialWorld
+  pure (RenderState vao vbo shaderProg Nothing)
 
 renderFrame :: (MonadState (GameState, RenderState) m, MonadIO m) => m ()
 renderFrame = do
@@ -94,6 +92,12 @@ renderFrame = do
 
   GL.clearColor $= Color4 0 0 0 0
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
+
+  vertices <- case (renderState ^. cachedMesh) of
+    Just mesh -> pure mesh
+    Nothing -> do let vertices = packWorld $ renderWorld gameState
+                  modify (set (_2 . cachedMesh) (Just vertices))
+                  pure vertices
 
   GL.bindVertexArrayObject $= Just (renderState ^. vao)
   GL.bindBuffer GL.ArrayBuffer $= Just (renderState ^. vbo)
@@ -137,12 +141,11 @@ packWorld :: [(Vector3 Float, Color4 Float)] -> V.Vector Float
 packWorld = V.fromList
   . concatMap (\(Vector3 x y z, Color4 r g b a) -> [x, y, z, r, g, b, a])
 
-renderWorld :: World -> [(Vector3 Float, Color4 Float)]
-renderWorld (World getChunk) =
+renderWorld :: GameState -> [(Vector3 Float, Color4 Float)]
+renderWorld state =
   let chunksToRender = [Vector3 x y z | x <- [-1..1], y <- [-1..100], z <- [-1..1]]
-  --let chunksToRender = [Vector3 x y z | ]
   in flip concatMap chunksToRender $ \pos ->
-    over (mapped . _1) (liftA2 (+) (toFloat <$> ((* 16) <$> pos))) (renderChunk (getChunk pos))
+    over (mapped . _1) (liftA2 (+) (toFloat <$> ((* 16) <$> pos))) (renderChunk ((state ^. world . getChunk) pos))
 
 renderChunk :: Chunk -> [(Vector3 Float, Color4 Float)]
 renderChunk (Chunk (M.toList -> blocks)) =

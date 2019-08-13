@@ -1,5 +1,6 @@
 module VoxelHaskell.World where
 
+import Control.Lens.TH
 import qualified Data.Map as M
 import Data.Map (Map)
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
@@ -9,10 +10,12 @@ import VoxelHaskell.Block
 data Chunk = Chunk
   { _blocks :: Map (Vector3 Int) Block
   }
+makeLenses ''Chunk
 
 data World = World
   { _getChunk :: Vector3 Int -> Chunk
   }
+makeLenses ''World
 
 emptyChunk :: Chunk
 emptyChunk = Chunk M.empty
