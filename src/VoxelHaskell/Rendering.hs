@@ -11,10 +11,10 @@ import qualified Data.Text.Encoding as Text
 import qualified Data.Vector.Storable as V
 import Linear
 import qualified Graphics.Rendering.OpenGL as GL
-import Graphics.Rendering.OpenGL (Vector3(..), Color3(..), Vertex3(..), Color4(..), ($=))
+import Graphics.Rendering.OpenGL (Vector3(..), Color4(..), ($=))
 import qualified Graphics.GL as GL
 import qualified Graphics.UI.GLFW as GLFW
-import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with, Ptr)
+import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with)
 
 import VoxelHaskell.Block
 import VoxelHaskell.GameState

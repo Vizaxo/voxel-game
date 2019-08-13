@@ -4,7 +4,7 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad.State
 import qualified Graphics.Rendering.OpenGL as GL
-import Graphics.Rendering.OpenGL (Vector3(..), Color3(..), Vertex3(..), Color4(..), ($=))
+import Graphics.Rendering.OpenGL (Vector3(..), ($=))
 import qualified Graphics.UI.GLFW as GLFW
 
 import VoxelHaskell.GameState
