@@ -35,8 +35,7 @@ makeWindow = do
   GLFW.windowTitle $= "GLFW Demo"
 
   GL.polygonMode $= (GL.Fill, GL.Fill)
-  --GL.cullFace $= Just GL.Back
-  GL.cullFace $= Nothing
+  GL.cullFace $= Just GL.Back
   GL.depthFunc $= Just GL.Less
 
   GLFW.disableSpecial GLFW.MouseCursor
@@ -152,7 +151,62 @@ renderChunk (Chunk (M.toList -> blocks)) =
 
 renderBlock :: Vector3 Int -> Block -> [(Vector3 Float, Color4 Float)]
 renderBlock pos block =
-  [ (Vector3 (-0.5) (-0.5) 0.5, Color4 1 0 0 1)
-  , (Vector3 0.5 (-0.5) 0.5, Color4 0 1 0 1)
-  , (Vector3 0.5 0.5 0.5, Color4 0 0 1 1)
-  ]
+  -- front
+  ((,Color4 1 0 0 1) <$>
+  [ Vector3 (-0.5) (-0.5) 0.5
+  , Vector3 0.5 (-0.5) 0.5
+  , Vector3 0.5 0.5 0.5
+  , Vector3 0.5 0.5 0.5
+  , Vector3 (-0.5) 0.5 0.5
+  , Vector3 (-0.5) (-0.5) 0.5
+  ])
+  <>
+  -- right
+  ((,Color4 0 1 0 1) <$>
+  [ Vector3 0.5 (-0.5) (-0.5)
+  , Vector3 0.5 0.5 (-0.5)
+  , Vector3 0.5 0.5 0.5
+  , Vector3 0.5 0.5 0.5
+  , Vector3 0.5 (-0.5) 0.5
+  , Vector3 0.5 (-0.5) (-0.5)
+  ])
+  <>
+  -- top
+  ((,Color4 0 0 1 1) <$>
+  [ Vector3 0.5 0.5 0.5
+  , Vector3 0.5 0.5 (-0.5)
+  , Vector3 (-0.5) 0.5 (-0.5)
+  , Vector3 (-0.5) 0.5 (-0.5)
+  , Vector3 (-0.5) 0.5 0.5
+  , Vector3 0.5 0.5 0.5
+  ])
+  <>
+  -- back
+  ((,Color4 0.5 0.5 0.5 1) <$>
+  [ Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 (-0.5) 0.5 (-0.5)
+  , Vector3 0.5 0.5 (-0.5)
+  , Vector3 0.5 0.5 (-0.5)
+  , Vector3 0.5 (-0.5) (-0.5)
+  , Vector3 (-0.5) (-0.5) (-0.5)
+  ])
+  <>
+  -- left
+  ((,Color4 1 1 1 1) <$>
+  [ Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 (-0.5) (-0.5) 0.5
+  , Vector3 (-0.5) 0.5 0.5
+  , Vector3 (-0.5) 0.5 0.5
+  , Vector3 (-0.5) 0.5 (-0.5)
+  , Vector3 (-0.5) (-0.5) (-0.5)
+  ])
+  <>
+  -- bottom
+  ((,Color4 0.2 0.2 0.2 1) <$>
+  [ Vector3 0.5 (-0.5) 0.5
+  , Vector3 (-0.5) (-0.5) 0.5
+  , Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 0.5 (-0.5) (-0.5)
+  , Vector3 0.5 (-0.5) 0.5
+  ])
