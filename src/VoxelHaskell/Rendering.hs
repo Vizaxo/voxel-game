@@ -5,6 +5,7 @@ import Control.Monad.State
 import Control.Lens
 import Data.Distributive (distribute)
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import qualified Data.Vector.Storable as V
@@ -19,11 +20,21 @@ import VoxelHaskell.Block
 import VoxelHaskell.GameState
 import VoxelHaskell.World
 
+data MeshCache = MeshCache
+  { _mesh :: Maybe (V.Vector Float)
+  , _renderedChunks :: S.Set (Vector3 Int)
+  , _dirty :: Bool
+  }
+makeLenses ''MeshCache
+
+emptyCache :: MeshCache
+emptyCache = MeshCache Nothing S.empty False
+
 data RenderState = RenderState
   { _vao :: GL.VertexArrayObject
   , _vbo :: GL.BufferObject
   , _shaderProg :: GL.Program
-  , _cachedMesh :: Maybe (V.Vector Float)
+  , _cachedMesh :: MeshCache
   }
 makeLenses ''RenderState
 
@@ -84,7 +95,28 @@ initOGL = do
   GL.linkProgram shaderProg
   GL.currentProgram $= Just shaderProg
 
-  pure (RenderState vao vbo shaderProg Nothing)
+  pure (RenderState vao vbo shaderProg emptyCache)
+
+generateMesh :: (MonadState (GameState, RenderState) m, MonadIO m) => m (V.Vector Float)
+generateMesh = do
+  (gameState, renderState) <- get
+  let cachedMesh' = renderState ^. cachedMesh
+      toRender = chunksToRender gameState
+  case (cachedMesh' ^. mesh
+       , cachedMesh' ^. dirty
+       , cachedMesh' ^. renderedChunks == toRender) of
+    (Just mesh, False, True) -> pure mesh
+    _ -> do let vertices = packWorld $ renderWorld gameState
+            modify (set (_2 . cachedMesh . mesh) (Just vertices))
+            modify (set (_2 . cachedMesh . dirty) False)
+            modify (set (_2 . cachedMesh . renderedChunks) toRender)
+            pure vertices
+
+chunksToRender :: GameState -> S.Set (Vector3 Int)
+chunksToRender state =
+  let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
+        = state ^. playerPos
+  in S.fromList [Vector3 x y z | x <- [posX - 1..posX + 1], y <- [posY - 1..posY + 1], z <- [posZ - 1..posZ + 1]]
 
 renderFrame :: (MonadState (GameState, RenderState) m, MonadIO m) => m ()
 renderFrame = do
@@ -93,11 +125,7 @@ renderFrame = do
   GL.clearColor $= Color4 0 0 0 0
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
-  vertices <- case (renderState ^. cachedMesh) of
-    Just mesh -> pure mesh
-    Nothing -> do let vertices = packWorld $ renderWorld gameState
-                  modify (set (_2 . cachedMesh) (Just vertices))
-                  pure vertices
+  vertices <- generateMesh
 
   GL.bindVertexArrayObject $= Just (renderState ^. vao)
   GL.bindBuffer GL.ArrayBuffer $= Just (renderState ^. vbo)
@@ -141,9 +169,14 @@ packWorld :: [(Vector3 Float, Color4 Float)] -> V.Vector Float
 packWorld = V.fromList
   . concatMap (\(Vector3 x y z, Color4 r g b a) -> [x, y, z, r, g, b, a])
 
+toChunkPos :: Float -> Int
+toChunkPos x = round x `div` 16
+
 renderWorld :: GameState -> [(Vector3 Float, Color4 Float)]
 renderWorld state =
-  let chunksToRender = [Vector3 x y z | x <- [-1..1], y <- [-1..100], z <- [-1..1]]
+  let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
+        = state ^. playerPos
+      chunksToRender = [Vector3 x y z | x <- [posX - 1..posX + 1], y <- [posY - 1..posY + 1], z <- [posZ - 1..posZ + 1]]
   in flip concatMap chunksToRender $ \pos ->
     over (mapped . _1) (liftA2 (+) (toFloat <$> ((* 16) <$> pos))) (renderChunk ((state ^. world . getChunk) pos))
 
