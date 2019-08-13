@@ -2,7 +2,7 @@ module VoxelHaskell.World where
 
 import qualified Data.Map as M
 import Data.Map (Map)
-import Graphics.Rendering.OpenGL (Vector3(..))
+import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
 
 import VoxelHaskell.Block
 
@@ -19,7 +19,7 @@ emptyChunk = Chunk M.empty
 
 fullChunk :: Chunk
 fullChunk = Chunk $ M.fromList
-  [ (Vector3 x y z, (Block black))
+  [ (Vector3 x y z, (Block (Color4 (fromIntegral x / 15) (fromIntegral y / 15) (fromIntegral z / 15) 1)))
   | x <- [0..15]
   , y <- [0..15]
   , z <- [0..15]

@@ -150,63 +150,48 @@ renderChunk (Chunk (M.toList -> blocks)) =
     over (mapped . _1) (liftA2 (+) (toFloat <$> pos)) (renderBlock pos block)
 
 renderBlock :: Vector3 Int -> Block -> [(Vector3 Float, Color4 Float)]
-renderBlock pos block =
+renderBlock pos (Block colour) =
+  (,colour) <$>
   -- front
-  ((,Color4 1 0 0 1) <$>
   [ Vector3 (-0.5) (-0.5) 0.5
   , Vector3 0.5 (-0.5) 0.5
   , Vector3 0.5 0.5 0.5
   , Vector3 0.5 0.5 0.5
   , Vector3 (-0.5) 0.5 0.5
   , Vector3 (-0.5) (-0.5) 0.5
-  ])
-  <>
   -- right
-  ((,Color4 0 1 0 1) <$>
-  [ Vector3 0.5 (-0.5) (-0.5)
+  , Vector3 0.5 (-0.5) (-0.5)
   , Vector3 0.5 0.5 (-0.5)
   , Vector3 0.5 0.5 0.5
   , Vector3 0.5 0.5 0.5
   , Vector3 0.5 (-0.5) 0.5
   , Vector3 0.5 (-0.5) (-0.5)
-  ])
-  <>
   -- top
-  ((,Color4 0 0 1 1) <$>
-  [ Vector3 0.5 0.5 0.5
+  , Vector3 0.5 0.5 0.5
   , Vector3 0.5 0.5 (-0.5)
   , Vector3 (-0.5) 0.5 (-0.5)
   , Vector3 (-0.5) 0.5 (-0.5)
   , Vector3 (-0.5) 0.5 0.5
   , Vector3 0.5 0.5 0.5
-  ])
-  <>
   -- back
-  ((,Color4 0.5 0.5 0.5 1) <$>
-  [ Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 (-0.5) (-0.5) (-0.5)
   , Vector3 (-0.5) 0.5 (-0.5)
   , Vector3 0.5 0.5 (-0.5)
   , Vector3 0.5 0.5 (-0.5)
   , Vector3 0.5 (-0.5) (-0.5)
   , Vector3 (-0.5) (-0.5) (-0.5)
-  ])
-  <>
   -- left
-  ((,Color4 1 1 1 1) <$>
-  [ Vector3 (-0.5) (-0.5) (-0.5)
+  , Vector3 (-0.5) (-0.5) (-0.5)
   , Vector3 (-0.5) (-0.5) 0.5
   , Vector3 (-0.5) 0.5 0.5
   , Vector3 (-0.5) 0.5 0.5
   , Vector3 (-0.5) 0.5 (-0.5)
   , Vector3 (-0.5) (-0.5) (-0.5)
-  ])
-  <>
   -- bottom
-  ((,Color4 0.2 0.2 0.2 1) <$>
-  [ Vector3 0.5 (-0.5) 0.5
+  , Vector3 0.5 (-0.5) 0.5
   , Vector3 (-0.5) (-0.5) 0.5
   , Vector3 (-0.5) (-0.5) (-0.5)
   , Vector3 (-0.5) (-0.5) (-0.5)
   , Vector3 0.5 (-0.5) (-0.5)
   , Vector3 0.5 (-0.5) 0.5
-  ])
+  ]

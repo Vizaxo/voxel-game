@@ -3,8 +3,8 @@ module VoxelHaskell.Block where
 import Graphics.Rendering.OpenGL as GL
 
 data Block = Block
-  { colour :: Color3 Float
+  { colour :: Color4 Float
   }
 
-black :: Color3 Float
-black = Color3 0 0 0
+black :: Color4 Float
+black = Color4 0 0 0 1
