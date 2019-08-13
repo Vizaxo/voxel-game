@@ -176,8 +176,8 @@ renderWorld :: GameState -> [(Vector3 Float, Color4 Float)]
 renderWorld state =
   let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
         = state ^. playerPos
-      chunksToRender = [Vector3 x y z | x <- [posX - 1..posX + 1], y <- [posY - 1..posY + 1], z <- [posZ - 1..posZ + 1]]
-  in flip concatMap chunksToRender $ \pos ->
+      chunks = S.toList $ chunksToRender state
+  in flip concatMap chunks $ \pos ->
     over (mapped . _1) (liftA2 (+) (toFloat <$> ((* 16) <$> pos))) (renderChunk ((state ^. world . getChunk) pos))
 
 renderChunk :: Chunk -> [(Vector3 Float, Color4 Float)]
