@@ -12,6 +12,9 @@ dependencies:
 - containers
 - vector
 - text
+- linear
+- OpenGLRaw
+- distributive
 
 default-extensions:
 - LambdaCase
