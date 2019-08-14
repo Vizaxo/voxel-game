@@ -10,12 +10,15 @@ import qualified Graphics.UI.GLFW as GLFW
 import VoxelHaskell.Player
 import VoxelHaskell.Utils
 
+moveScale :: Float
+moveScale = 0.2
+
 handleInput :: (MonadMultiState Player m, MonadIO m) => m ()
 handleInput = do
-  onPress (GLFW.CharKey ',') $ movePlayer Forward 0.1
-  onPress (GLFW.CharKey 'O') $ movePlayer Backward 0.1
-  onPress (GLFW.CharKey 'A') $ movePlayer DirLeft 0.1
-  onPress (GLFW.CharKey 'E') $ movePlayer DirRight 0.1
+  onPress (GLFW.CharKey ',') $ movePlayer Forward moveScale
+  onPress (GLFW.CharKey 'O') $ movePlayer Backward moveScale
+  onPress (GLFW.CharKey 'A') $ movePlayer DirLeft moveScale
+  onPress (GLFW.CharKey 'E') $ movePlayer DirRight moveScale
 
   GL.Position posX posY <- liftIO (GL.get GLFW.mousePos)
   mModify (over angle (+ (fromIntegral posX / 7)))
