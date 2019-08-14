@@ -21,7 +21,7 @@ initialPlayer = Player
   , _angleY = 0
   }
 
-data Direction = Forward | Backward | DirLeft | DirRight
+data Direction = Forward | Backward | DirLeft | DirRight | DirUp | DirDown
 
 movePlayer :: MonadMultiState Player m => Direction -> Float -> m ()
 movePlayer dir amount = mModify (over pos (liftA2 (+) vect))
@@ -30,3 +30,5 @@ movePlayer dir amount = mModify (over pos (liftA2 (+) vect))
           Backward -> Vector3 0 0 (-amount)
           DirRight -> Vector3 (-amount) 0 0
           DirLeft -> Vector3 amount 0 0
+          DirUp -> Vector3 0 amount 0
+          DirDown -> Vector3 0 (-amount) 0

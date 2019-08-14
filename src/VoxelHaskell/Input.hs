@@ -20,6 +20,8 @@ handleInput = do
   onPress (GLFW.CharKey 'O') $ movePlayer Backward moveScale
   onPress (GLFW.CharKey 'A') $ movePlayer DirLeft moveScale
   onPress (GLFW.CharKey 'E') $ movePlayer DirRight moveScale
+  onPress (GLFW.CharKey ' ') $ movePlayer DirUp moveScale
+  onPress (GLFW.SpecialKey GLFW.LSHIFT) $ movePlayer DirDown moveScale
 
   GL.Position posX posY <- liftIO (GL.get GLFW.mousePos)
   mModify (over angleX (flip mod' 360 . (+ (fromIntegral posX / 7))))
