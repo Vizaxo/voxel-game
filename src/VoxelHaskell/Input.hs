@@ -1,27 +1,24 @@
 module VoxelHaskell.Input where
 
-import Control.Applicative
 import Control.Lens
-import Control.Monad.State
+import Control.Monad.Trans
+import Control.Monad.Trans.MultiState
 import qualified Graphics.Rendering.OpenGL as GL
-import Graphics.Rendering.OpenGL (Vector3(..), ($=))
+import Graphics.Rendering.OpenGL (($=))
 import qualified Graphics.UI.GLFW as GLFW
 
-import VoxelHaskell.GameState
+import VoxelHaskell.Player
+import VoxelHaskell.Utils
 
-handleInput :: (MonadState GameState m, MonadIO m) => m ()
+handleInput :: (MonadMultiState Player m, MonadIO m) => m ()
 handleInput = do
-  onPress (GLFW.CharKey ',')
-    $ modify (over playerPos (liftA2 (+) (Vector3 0 0 (-0.1))))
-  onPress (GLFW.CharKey 'O')
-    $ modify (over playerPos (liftA2 (+) (Vector3 0 0 0.1)))
-  onPress (GLFW.CharKey 'A')
-    $ modify (over playerPos (liftA2 (+) (Vector3 (-0.1) 0 0)))
-  onPress (GLFW.CharKey 'E')
-    $ modify (over playerPos (liftA2 (+) (Vector3 (0.1) 0 0)))
+  onPress (GLFW.CharKey ',') $ movePlayer Forward 0.1
+  onPress (GLFW.CharKey 'O') $ movePlayer Backward 0.1
+  onPress (GLFW.CharKey 'A') $ movePlayer DirLeft 0.1
+  onPress (GLFW.CharKey 'E') $ movePlayer DirRight 0.1
 
   GL.Position posX posY <- liftIO (GL.get GLFW.mousePos)
-  modify (over playerAngle (+ (fromIntegral posX / 7)))
+  mModify (over angle (+ (fromIntegral posX / 7)))
   GLFW.mousePos $= (GL.Position 0 0)
 
 onPress :: MonadIO m => GLFW.Key -> m () -> m ()

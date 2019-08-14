@@ -15,6 +15,7 @@ dependencies:
 - linear
 - OpenGLRaw
 - distributive
+- multistate
 
 default-extensions:
 - LambdaCase

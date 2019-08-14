@@ -5,6 +5,8 @@ packages:
 
 extra-deps:
 - GLFW-0.5.2.5@sha256:fa54e997076a6b415c43100830e9b6ab6827c8766aef80e66d598de9b2400b93
+- multistate-0.8.0.2@sha256:fbb0d8ade9ef73c8ed92488f5804d0ebe75d3a9c24bf53452bc3a4f32b34cb2e
+
 
 nix:
   enable: true

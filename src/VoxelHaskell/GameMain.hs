@@ -1,22 +1,28 @@
 module VoxelHaskell.GameMain where
 
-import Control.Lens
-import Control.Monad.State
+import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.Trans.MultiState
+import Data.HList.HList
 
-import VoxelHaskell.GameState
 import VoxelHaskell.Input
+import VoxelHaskell.Player
 import VoxelHaskell.Rendering
+import VoxelHaskell.World
 
 gameMain :: IO ()
 gameMain = do
   initRendering
   makeWindow
   renderState <- initOGL
-  void $ liftIO $ runStateT (forever mainLoop) (initialGameState, renderState)
+  void $ liftIO $ runMultiStateT
+    (initialPlayer :+: initialWorld :+: renderState :+: HNil)
+    (forever mainLoop)
 
-mainLoop :: (MonadState (GameState, RenderState) m, MonadIO m) => m ()
+mainLoop
+  :: (MonadMultiState Player m, MonadMultiState World m
+    , MonadMultiState RenderState m, MonadIO m)
+  => m ()
 mainLoop = do
-  (gameState, _) <- get
-  gameState' <- execStateT handleInput gameState
-  modify (set _1 gameState')
+  handleInput
   renderFrame
