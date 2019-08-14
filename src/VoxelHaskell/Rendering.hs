@@ -159,7 +159,7 @@ renderFrame = do
   GL.vertexAttribArray colourAttribute $= GL.Enabled
 
   let (Vector3 posX posY posZ) = player ^. pos
-  let projection = (perspective (90 / 180 * pi) 0.5 0.1 100 :: M44 GL.GLfloat)
+  let projection = (perspective (90 / 180 * pi) (8/9) 0.1 100 :: M44 GL.GLfloat)
         !*! mkTransformation
         (axisAngle (V3 1 0 0) (player ^. angleY / 180 * pi))
         (V3 0 0 0)
