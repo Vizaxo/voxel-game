@@ -41,6 +41,9 @@ data RenderState = RenderState
   }
 makeLenses ''RenderState
 
+viewDistance :: Int
+viewDistance = 2
+
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
 
@@ -123,7 +126,7 @@ chunksToRender = do
   player <- mGet
   let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
         = player ^. pos
-  pure $ S.fromList [Vector3 x y z | x <- [posX - 1..posX + 1], y <- [posY - 1..posY + 1], z <- [posZ - 1..posZ + 1]]
+  pure $ S.fromList [Vector3 x y z | x <- [posX - viewDistance..posX + viewDistance], y <- [posY - viewDistance..posY + viewDistance], z <- [posZ - viewDistance..posZ + viewDistance]]
 
 renderFrame
   :: (MonadMultiGet Player m, MonadMultiGet World m, MonadMultiState RenderState m
@@ -156,7 +159,7 @@ renderFrame = do
   GL.vertexAttribArray colourAttribute $= GL.Enabled
 
   let (Vector3 posX posY posZ) = player ^. pos
-  let projection = (perspective (90 / 180 * pi) 0.5 0.1 50 :: M44 GL.GLfloat)
+  let projection = (perspective (90 / 180 * pi) 0.5 0.1 100 :: M44 GL.GLfloat)
         !*! mkTransformation
         (axisAngle (V3 0 1 0) (player ^. angle / 180 * pi))
         (V3 0 0 0)
