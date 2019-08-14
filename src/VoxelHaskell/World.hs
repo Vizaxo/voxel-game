@@ -7,7 +7,6 @@ import Data.Maybe
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
 
 import VoxelHaskell.Block
-import VoxelHaskell.WorldGenerator
 
 data Chunk = Chunk
   { _blocks :: Map (Vector3 Int) Block'
@@ -49,6 +48,3 @@ mkWorld generator = World $ \(Vector3 chX chY chZ)
                      -> generator (Vector3 (chX * 16 + localX)
                                    (chY * 16 + localY)
                                    (chZ * 16 + localZ))
-
-initialWorld :: World
-initialWorld = mkWorld generateWorld

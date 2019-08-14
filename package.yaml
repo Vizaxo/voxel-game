@@ -16,6 +16,7 @@ dependencies:
 - OpenGLRaw
 - distributive
 - multistate
+- Noise
 
 default-extensions:
 - LambdaCase

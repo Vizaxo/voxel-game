@@ -9,14 +9,16 @@ import VoxelHaskell.Input
 import VoxelHaskell.Player
 import VoxelHaskell.Rendering
 import VoxelHaskell.World
+import VoxelHaskell.WorldGenerator
 
 gameMain :: IO ()
 gameMain = do
   initRendering
   makeWindow
   renderState <- initOGL
+  let seed = 33
   void $ liftIO $ runMultiStateT
-    (initialPlayer :+: initialWorld :+: renderState :+: HNil)
+    (initialPlayer :+: mkWorld (generateWorld seed) :+: renderState :+: HNil)
     (forever mainLoop)
 
 mainLoop

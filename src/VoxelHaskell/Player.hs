@@ -15,7 +15,7 @@ makeLenses ''Player
 
 initialPlayer :: Player
 initialPlayer = Player
-  { _pos = Vector3 0 3 10
+  { _pos = Vector3 0 3 0
   , _angle = 180
   }
 
