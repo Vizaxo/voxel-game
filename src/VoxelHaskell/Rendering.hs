@@ -200,7 +200,7 @@ renderChunk (Chunk (M.toList -> blocks)) =
   flip concatMap blocks $ \(pos, block) ->
     over (mapped . _1) (liftA2 (+) (toFloat <$> pos)) (renderBlock pos block)
 
-renderBlock :: Vector3 Int -> Block -> [(Vector3 Float, Color4 Float)]
+renderBlock :: Vector3 Int -> Block' -> [(Vector3 Float, Color4 Float)]
 renderBlock pos (Block colour) =
   (,colour) <$>
   -- front
