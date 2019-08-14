@@ -3,6 +3,7 @@ module VoxelHaskell.Input where
 import Control.Lens
 import Control.Monad.Trans
 import Control.Monad.Trans.MultiState
+import Data.Fixed
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL (($=))
 import qualified Graphics.UI.GLFW as GLFW
@@ -21,7 +22,8 @@ handleInput = do
   onPress (GLFW.CharKey 'E') $ movePlayer DirRight moveScale
 
   GL.Position posX posY <- liftIO (GL.get GLFW.mousePos)
-  mModify (over angle (+ (fromIntegral posX / 7)))
+  mModify (over angleX (flip mod' 360 . (+ (fromIntegral posX / 7))))
+  mModify (over angleY (clamp (-90) 90 . (+ (fromIntegral posY / 7))))
   GLFW.mousePos $= (GL.Position 0 0)
 
 onPress :: MonadIO m => GLFW.Key -> m () -> m ()

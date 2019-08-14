@@ -9,14 +9,16 @@ import VoxelHaskell.Utils
 
 data Player = Player
   { _pos :: Vector3 Float
-  , _angle :: Float
+  , _angleX :: Float
+  , _angleY :: Float
   }
 makeLenses ''Player
 
 initialPlayer :: Player
 initialPlayer = Player
   { _pos = Vector3 0 3 0
-  , _angle = 180
+  , _angleX = 180
+  , _angleY = 0
   }
 
 data Direction = Forward | Backward | DirLeft | DirRight

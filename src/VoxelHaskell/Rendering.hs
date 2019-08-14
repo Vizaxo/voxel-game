@@ -161,7 +161,10 @@ renderFrame = do
   let (Vector3 posX posY posZ) = player ^. pos
   let projection = (perspective (90 / 180 * pi) 0.5 0.1 100 :: M44 GL.GLfloat)
         !*! mkTransformation
-        (axisAngle (V3 0 1 0) (player ^. angle / 180 * pi))
+        (axisAngle (V3 1 0 0) (player ^. angleY / 180 * pi))
+        (V3 0 0 0)
+        !*! mkTransformation
+        (axisAngle (V3 0 1 0) (player ^. angleX / 180 * pi))
         (V3 0 0 0)
         !*! mkTransformation
         (axisAngle (V3 0 1 0) 0)
