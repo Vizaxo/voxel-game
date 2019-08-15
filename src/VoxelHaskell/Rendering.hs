@@ -19,6 +19,7 @@ import qualified Graphics.UI.GLFW as GLFW
 import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with)
 
 import VoxelHaskell.Block
+import VoxelHaskell.Camera
 import VoxelHaskell.Player
 import VoxelHaskell.Utils
 import VoxelHaskell.World
@@ -132,7 +133,6 @@ renderFrame
   :: (MonadMultiGet Player m, MonadMultiGet World m, MonadMultiState RenderState m
     , MonadIO m) => m ()
 renderFrame = do
-  player <- mGet
   renderState <- mGet
 
   GL.clearColor $= Color4 0 0 0 0
@@ -158,20 +158,11 @@ renderFrame = do
     (GL.ToFloat, GL.VertexArrayDescriptor 4 GL.Float (fromIntegral (7 * sizeOf (0 :: Float))) (plusPtr nullPtr (3 * sizeOf (0 :: Float))))
   GL.vertexAttribArray colourAttribute $= GL.Enabled
 
-  let projection = (perspective (80 / 360 * tau) (8/9) 0.1 100 :: M44 GL.GLfloat)
-        !*! mkTransformation
-        (axisAngle (V3 1 0 0) (player ^. pitch))
-        (V3 0 0 0)
-        !*! mkTransformation
-        (axisAngle (V3 0 1 0) (player ^. yaw))
-        (V3 0 0 0)
-        !*! mkTransformation
-        (axisAngle (V3 0 1 0) 0)
-        (- (player ^. pos))
+  cam <- cameraMatrix
   GL.currentProgram $= Just (renderState ^. shaderProg)
 
   GL.UniformLocation projectionLocation <- GL.get (GL.uniformLocation (renderState ^. shaderProg) "projection")
-  liftIO $ with (distribute $ projection) $ \ptr ->
+  liftIO $ with (distribute $ cam) $ \ptr ->
     GL.glUniformMatrix4fv projectionLocation 1 0 (castPtr ptr)
 
   liftIO $ GL.drawArrays GL.Triangles 0 (fromIntegral $ V.length vertices)
