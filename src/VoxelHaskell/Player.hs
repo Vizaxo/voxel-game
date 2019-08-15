@@ -1,34 +1,40 @@
 module VoxelHaskell.Player where
 
-import Control.Applicative
 import Control.Lens
 import Control.Monad.Trans.MultiState
-import Graphics.Rendering.OpenGL as GL
+import Data.Fixed
+import Linear
 
 import VoxelHaskell.Utils
 
 data Player = Player
-  { _pos :: Vector3 Float
-  , _angleX :: Float
-  , _angleY :: Float
+  { _pos :: V3 Float
+  , _pitch :: Radians
+  , _yaw :: Radians
   }
 makeLenses ''Player
 
 initialPlayer :: Player
 initialPlayer = Player
-  { _pos = Vector3 0 3 0
-  , _angleX = 180
-  , _angleY = 0
+  { _pos = V3 0 3 0
+  , _pitch = (-30)
+  , _yaw = 0
   }
 
 data Direction = Forward | Backward | DirLeft | DirRight | DirUp | DirDown
 
 movePlayer :: MonadMultiState Player m => Direction -> Float -> m ()
-movePlayer dir amount = mModify (over pos (liftA2 (+) vect))
-  where vect = case dir of
-          Forward -> Vector3 0 0 amount
-          Backward -> Vector3 0 0 (-amount)
-          DirRight -> Vector3 (-amount) 0 0
-          DirLeft -> Vector3 amount 0 0
-          DirUp -> Vector3 0 amount 0
-          DirDown -> Vector3 0 (-amount) 0
+movePlayer Forward amount = do
+  (Player _ pitch yaw) <- mGet
+  let move = (* amount) <$> (V3 (sin yaw * cos pitch)
+                              (- (sin pitch))
+                              (- (cos yaw * cos pitch)))
+  mModify (over pos (+ move))
+movePlayer DirUp amount = mModify (over pos (+ (V3 0 amount 0)))
+movePlayer DirDown amount = mModify (over pos (+ (V3 0 (-amount) 0)))
+movePlayer _ _ = pure ()
+
+look :: MonadMultiState Player m => Float -> Float -> m ()
+look dYaw dPitch = do
+  mModify (over yaw (flip mod' tau . (+ dYaw)))
+  mModify (over pitch (clamp (-tau/4) (tau/4) . (+ dPitch)))

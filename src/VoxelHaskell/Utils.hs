@@ -12,3 +12,8 @@ clamp lower upper x
   | x <= lower = lower
   | x >= upper = upper
   | otherwise = x
+
+type Radians = Float
+
+tau :: Floating a => a
+tau = 2*pi

@@ -124,7 +124,7 @@ generateMesh = do
 chunksToRender :: MonadMultiGet Player m => m (S.Set (Vector3 Int))
 chunksToRender = do
   player <- mGet
-  let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
+  let (V3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
         = player ^. pos
   pure $ S.fromList [Vector3 x y z | x <- [posX - viewDistance..posX + viewDistance], y <- [posY - viewDistance..posY + viewDistance], z <- [posZ - viewDistance..posZ + viewDistance]]
 
@@ -158,17 +158,16 @@ renderFrame = do
     (GL.ToFloat, GL.VertexArrayDescriptor 4 GL.Float (fromIntegral (7 * sizeOf (0 :: Float))) (plusPtr nullPtr (3 * sizeOf (0 :: Float))))
   GL.vertexAttribArray colourAttribute $= GL.Enabled
 
-  let (Vector3 posX posY posZ) = player ^. pos
-  let projection = (perspective (90 / 180 * pi) (8/9) 0.1 100 :: M44 GL.GLfloat)
+  let projection = (perspective (80 / 360 * tau) (8/9) 0.1 100 :: M44 GL.GLfloat)
         !*! mkTransformation
-        (axisAngle (V3 1 0 0) (player ^. angleY / 180 * pi))
+        (axisAngle (V3 1 0 0) (player ^. pitch))
         (V3 0 0 0)
         !*! mkTransformation
-        (axisAngle (V3 0 1 0) (player ^. angleX / 180 * pi))
+        (axisAngle (V3 0 1 0) (player ^. yaw))
         (V3 0 0 0)
         !*! mkTransformation
         (axisAngle (V3 0 1 0) 0)
-        (V3 (-posX) (-posY) (-posZ))
+        (- (player ^. pos))
   GL.currentProgram $= Just (renderState ^. shaderProg)
 
   GL.UniformLocation projectionLocation <- GL.get (GL.uniformLocation (renderState ^. shaderProg) "projection")
@@ -190,10 +189,6 @@ toChunkPos x = round x `div` 16
 
 renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m) => m [(Vector3 Float, Color4 Float)]
 renderWorld = do
-  player <- mGet
-
-  let (Vector3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
-        = player ^. pos
   world <- mGet
   chunks <- S.toList <$> chunksToRender
   pure $ flip concatMap chunks
