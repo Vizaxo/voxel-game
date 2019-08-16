@@ -7,6 +7,7 @@ import Graphics.Rendering.OpenGL (($=))
 import qualified Graphics.UI.GLFW as GLFW
 
 import VoxelHaskell.Player
+import VoxelHaskell.World
 
 moveScale :: Float
 moveScale = 2
@@ -14,9 +15,10 @@ moveScale = 2
 mouseSensitivity :: Float
 mouseSensitivity = recip 100
 
-handleInput :: (MonadMultiState Player m, MonadIO m) => m ()
+handleInput :: (MonadMultiState Player m, MonadMultiGet World m, MonadIO m) => m ()
 handleInput = do
   onPress (GLFW.CharKey ',') (movePlayer Forward moveScale) (movePlayer Forward 0)
+  onPress (GLFW.CharKey ' ') jump (pure ())
 
   GL.Position posX posY <- liftIO (GL.get GLFW.mousePos)
   GLFW.mousePos $= (GL.Position 0 0)

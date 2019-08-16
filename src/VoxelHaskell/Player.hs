@@ -21,16 +21,24 @@ makeLenses ''Player
 playerHeight :: Float
 playerHeight = 1.5
 
+jumpSpeed :: Float
+jumpSpeed = 4
+
 instance MonadMultiGet World m => PhysicsObject Player m where
   tick :: Float -> Player -> m Player
   tick delta p = do
     let p2 = over vel (gravity delta) p
     let p3 = over pos (velocity delta (p ^. vel)) p2
-    blockStanding <- getBlock (round <$> p3 ^. pos)
-    case blockStanding of
-      Nothing -> pure p3
-      Just _ -> pure $ set (vel . _y) 0 $ over (vel . _y) ((+ 0.5) . fromIntegral . round) $ p3
+    touchingGround p3 >>= \case
+      False -> pure p3
+      True -> pure $ set (vel . _y) 0 $ over (vel . _y) ((+ 0.5) . fromIntegral . round) $ p3
 
+touchingGround :: MonadMultiGet World m => Player -> m Bool
+touchingGround player = do
+  blockStanding <- getBlock (round <$> player ^. pos)
+  pure $ case blockStanding of
+    Nothing -> False
+    Just _ -> True
 
 initialPlayer :: Player
 initialPlayer = Player
@@ -50,6 +58,11 @@ movePlayer Forward amount = do
 movePlayer DirUp amount = mModify (over pos (+ (V3 0 amount 0)))
 movePlayer DirDown amount = mModify (over pos (+ (V3 0 (-amount) 0)))
 movePlayer _ _ = pure ()
+
+jump :: (MonadMultiState Player m, MonadMultiGet World m) => m ()
+jump = do
+  player <- mGet
+  whenM (touchingGround player) $ mModify (set (vel . _y) jumpSpeed)
 
 look :: MonadMultiState Player m => Float -> Float -> m ()
 look dYaw dPitch = do
