@@ -1,5 +1,6 @@
 module VoxelHaskell.Physics where
 
+import Control.Lens
 import Linear
 
 class PhysicsObject o m where
@@ -9,7 +10,7 @@ g :: Float
 g = 9.81
 
 gravity :: Float -> V3 Float -> V3 Float
-gravity delta (V3 x y z) = V3 x (y - (g * delta)) z
+gravity delta = over _y (subtract (g * delta))
 
 velocity :: Float -> V3 Float -> V3 Float -> V3 Float
 velocity delta (V3 xv yv zv) (V3 x y z) = V3 x' y' z'

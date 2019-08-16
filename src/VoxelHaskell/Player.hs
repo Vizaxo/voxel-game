@@ -15,6 +15,7 @@ data Player = Player
   , _pitch :: Radians
   , _yaw :: Radians
   }
+  deriving Show
 makeLenses ''Player
 
 playerHeight :: Float
@@ -44,10 +45,8 @@ data Direction = Forward | Backward | DirLeft | DirRight | DirUp | DirDown
 movePlayer :: MonadMultiState Player m => Direction -> Float -> m ()
 movePlayer Forward amount = do
   (Player _ _ pitch yaw) <- mGet
-  let move = (* amount) <$> (V3 (sin yaw * cos pitch)
-                              (- (sin pitch))
-                              (- (cos yaw * cos pitch)))
-  mModify (over pos (+ move))
+  mModify (set (vel . _x) (amount * (sin yaw * cos pitch)))
+  mModify (set (vel . _z) (amount * (- (cos yaw * cos pitch))))
 movePlayer DirUp amount = mModify (over pos (+ (V3 0 amount 0)))
 movePlayer DirDown amount = mModify (over pos (+ (V3 0 (-amount) 0)))
 movePlayer _ _ = pure ()

@@ -30,4 +30,4 @@ mainLoop
 mainLoop = do
   handleInput
   renderFrame
-  mModifyM @Player (tick 0.01)
+  mModifyM @Player (tick 0.05)
