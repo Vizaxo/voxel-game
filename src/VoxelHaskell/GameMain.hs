@@ -6,8 +6,10 @@ import Control.Monad.Trans.MultiState
 import Data.HList.HList
 
 import VoxelHaskell.Input
+import VoxelHaskell.Physics
 import VoxelHaskell.Player
 import VoxelHaskell.Rendering
+import VoxelHaskell.Utils
 import VoxelHaskell.World
 import VoxelHaskell.WorldGenerator
 
@@ -28,3 +30,4 @@ mainLoop
 mainLoop = do
   handleInput
   renderFrame
+  mModifyM @Player (tick 0.003)

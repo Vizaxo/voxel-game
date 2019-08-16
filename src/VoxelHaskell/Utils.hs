@@ -7,6 +7,11 @@ mModify f = do
   s <- mGet
   mSet (f s)
 
+mModifyM :: MonadMultiState s m => (s -> m s) -> m ()
+mModifyM f = do
+  s <- mGet
+  mSet =<< (f s)
+
 clamp :: Ord n => n -> n -> n -> n
 clamp lower upper x
   | x <= lower = lower

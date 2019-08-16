@@ -25,6 +25,10 @@ default-extensions:
 - MultiParamTypeClasses
 - TemplateHaskell
 - TupleSections
+- FlexibleInstances
+- UndecidableInstances
+- InstanceSigs
+- TypeApplications
 
 library:
   source-dirs: src
