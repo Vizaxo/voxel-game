@@ -43,7 +43,7 @@ data RenderState = RenderState
 makeLenses ''RenderState
 
 viewDistance :: Int
-viewDistance = 2
+viewDistance = 1
 
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
