@@ -1,6 +1,8 @@
 module VoxelHaskell.Utils where
 
 import Control.Monad.Trans.MultiState
+import Graphics.Rendering.OpenGL (Vector3(..))
+import Linear
 
 mModify :: MonadMultiState s m => (s -> s) -> m ()
 mModify f = do
@@ -22,3 +24,9 @@ type Radians = Float
 
 tau :: Floating a => a
 tau = 2*pi
+
+vector3ToV3 :: Vector3 a -> V3 a
+vector3ToV3 (Vector3 x y z) = V3 x y z
+
+v3ToVector3 :: V3 a -> Vector3 a
+v3ToVector3 (V3 x y z) = Vector3 x y z

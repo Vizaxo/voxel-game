@@ -1,12 +1,15 @@
 module VoxelHaskell.World where
 
-import Control.Lens.TH
+import Control.Lens
+import Control.Monad.Trans.MultiState
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Maybe
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
+import Linear
 
 import VoxelHaskell.Block
+import VoxelHaskell.Utils
 
 data Chunk = Chunk
   { _blocks :: Map (Vector3 Int) Block'
@@ -48,3 +51,15 @@ mkWorld generator = World $ \(Vector3 chX chY chZ)
                      -> generator (Vector3 (chX * 16 + localX)
                                    (chY * 16 + localY)
                                    (chZ * 16 + localZ))
+
+worldToChunkPos :: Vector3 Int -> Vector3 Int
+worldToChunkPos pos = (`div` 16) <$> pos
+
+toPosInChunk :: Vector3 Int -> Vector3 Int
+toPosInChunk pos = (`mod` 16) <$> pos
+
+getBlock :: MonadMultiGet World m => V3 Int -> m Block
+getBlock (v3ToVector3 -> pos) = do
+  world <- mGet
+  let chunk = (world ^. getChunk) (worldToChunkPos pos)
+  pure (M.lookup (toPosInChunk pos) (chunk ^. blocks))

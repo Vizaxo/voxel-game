@@ -7,6 +7,9 @@ import Linear
 import VoxelHaskell.Player
 import VoxelHaskell.Utils
 
+playerToCamera :: V3 Float
+playerToCamera = V3 0 1.5 0
+
 viewMatrix :: MonadMultiGet Player m => m (M44 Float)
 viewMatrix = do
   player <- mGet
@@ -18,7 +21,7 @@ viewMatrix = do
     (V3 0 0 0)
     !*! mkTransformation
     (axisAngle (V3 0 1 0) 0)
-    (- (player ^. pos))
+    (- (player ^. pos + playerToCamera))
 
 projectionMatrix :: M44 Float
 projectionMatrix = perspective (80 / 360 * tau) (8/9) 0.1 100

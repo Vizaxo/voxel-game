@@ -7,6 +7,7 @@ import Linear
 
 import VoxelHaskell.Physics
 import VoxelHaskell.Utils
+import VoxelHaskell.World
 
 data Player = Player
   { _pos :: V3 Float
@@ -16,12 +17,18 @@ data Player = Player
   }
 makeLenses ''Player
 
-instance Monad m => PhysicsObject Player m where
+playerHeight :: Float
+playerHeight = 1.5
+
+instance MonadMultiGet World m => PhysicsObject Player m where
   tick :: Float -> Player -> m Player
   tick delta p = do
     let p2 = over vel (gravity delta) p
     let p3 = over pos (velocity delta (p ^. vel)) p2
-    pure p3
+    blockStanding <- getBlock (round <$> p3 ^. pos)
+    case blockStanding of
+      Nothing -> pure p3
+      Just _ -> pure $ set (vel . _y) 0 $ over (vel . _y) ((+ 0.5) . fromIntegral . round) $ p3
 
 
 initialPlayer :: Player
