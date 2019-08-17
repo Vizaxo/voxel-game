@@ -15,7 +15,6 @@ dependencies:
 - linear
 - OpenGLRaw
 - distributive
-- multistate
 - Noise
 - stm
 - time

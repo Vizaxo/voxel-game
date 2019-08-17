@@ -1,7 +1,6 @@
 module VoxelHaskell.World where
 
 import Control.Lens
-import Control.Monad.Trans.MultiState
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Maybe
@@ -11,6 +10,7 @@ import Linear
 import GHC.Generics
 
 import VoxelHaskell.Block
+import VoxelHaskell.STMState
 import VoxelHaskell.Utils
 
 deriving instance Generic a => Generic (Vector3 a)
@@ -69,9 +69,9 @@ worldToChunkPos pos = (`div` 16) <$> pos
 toPosInChunk :: Vector3 Int -> Vector3 Int
 toPosInChunk pos = (`mod` 16) <$> pos
 
-getBlock :: MonadMultiGet World m => V3 Int -> m Block
+getBlock :: MonadGet World m => V3 Int -> m Block
 getBlock (v3ToVector3 -> pos) = do
-  world <- mGet
+  world <- get
   let chunk = (world ^. getChunk) (worldToChunkPos pos)
   pure (M.lookup (toPosInChunk pos) (chunk ^. blocks))
 

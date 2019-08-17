@@ -1,12 +1,12 @@
 module VoxelHaskell.Input where
 
 import Control.Monad.Trans
-import Control.Monad.Trans.MultiState
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL (($=))
 import qualified Graphics.UI.GLFW as GLFW
 
 import VoxelHaskell.Player
+import VoxelHaskell.STMState
 import VoxelHaskell.World
 
 moveScale :: Float
@@ -15,7 +15,7 @@ moveScale = 2
 mouseSensitivity :: Float
 mouseSensitivity = recip 100
 
-handleInput :: (MonadMultiState Player m, MonadMultiGet World m, MonadIO m) => m ()
+handleInput :: (MonadState Player m, MonadGet World m, MonadIO m) => m ()
 handleInput = do
   onPress (GLFW.CharKey ',') (movePlayer Forward moveScale) (movePlayer Forward 0)
   onPress (GLFW.CharKey ' ') jump (pure ())

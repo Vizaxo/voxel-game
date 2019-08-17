@@ -1,19 +1,8 @@
 module VoxelHaskell.Utils where
 
 import Control.Monad
-import Control.Monad.Trans.MultiState
 import Graphics.Rendering.OpenGL (Vector3(..))
 import Linear
-
-mModify :: MonadMultiState s m => (s -> s) -> m ()
-mModify f = do
-  s <- mGet
-  mSet (f s)
-
-mModifyM :: MonadMultiState s m => (s -> m s) -> m ()
-mModifyM f = do
-  s <- mGet
-  mSet =<< (f s)
 
 clamp :: Ord n => n -> n -> n -> n
 clamp lower upper x

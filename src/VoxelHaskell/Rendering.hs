@@ -2,8 +2,7 @@ module VoxelHaskell.Rendering where
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.State
-import Control.Monad.Trans.MultiState
+import Control.Monad.Trans
 import Control.Lens
 import Data.Bits
 import Data.ByteString (ByteString)
@@ -28,6 +27,7 @@ import VoxelHaskell.Block
 import VoxelHaskell.Camera
 import VoxelHaskell.Player
 import VoxelHaskell.World
+import VoxelHaskell.STMState
 
 newtype FaceBitmask = FaceBitmask Word32
   deriving (Eq, Show, Bits, Storable)
@@ -73,7 +73,7 @@ data RenderState = RenderState
 makeLenses ''RenderState
 
 viewDistance :: Int
-viewDistance = 1
+viewDistance = 2
 
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
@@ -131,7 +131,7 @@ initOGL = do
   pure (RenderState vao vbo shaderProg emptyCache)
 
 generateMesh
-  :: (MonadMultiGet Player m, MonadMultiGet World m
+  :: (MonadGet Player m, MonadGet World m
     , MonadState RenderState m, MonadIO m) => m ByteString
 generateMesh = do
   renderState <- get
@@ -153,7 +153,7 @@ generateMesh = do
             pure vertices
 
 getVertices
-  :: (MonadMultiGet Player m, MonadState RenderState m) => m ByteString
+  :: (MonadGet Player m, MonadState RenderState m) => m ByteString
 getVertices = do
   renderState <- get
   case (renderState ^. cachedMesh . mesh) of
@@ -161,15 +161,15 @@ getVertices = do
       pure mesh
     _ -> pure BS.empty
 
-chunksToRender :: MonadMultiGet Player m => m (S.Set (Vector3 Int))
+chunksToRender :: MonadGet Player m => m (S.Set (Vector3 Int))
 chunksToRender = do
-  player <- mGet
+  player <- get
   let (V3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
         = player ^. pos
   pure $ S.fromList [Vector3 x y z | x <- [posX - viewDistance..posX + viewDistance], y <- [posY - viewDistance..posY + viewDistance], z <- [posZ - viewDistance..posZ + viewDistance]]
 
 renderFrame
-  :: (MonadMultiGet Player m, MonadState RenderState m
+  :: (MonadGet Player m, MonadState RenderState m
     , MonadIO m) => m ()
 renderFrame = do
   renderState <- get
@@ -236,9 +236,9 @@ faceMapping =
   , (Vector3 0 0 (-1), negZ)
   ]
 
-renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m, MonadIO m) => m [Vertex]
+renderWorld :: (MonadGet Player m, MonadGet World m, MonadIO m) => m [Vertex]
 renderWorld = do
-  world <- mGet
+  world <- get
   chunks <- S.toList <$> chunksToRender
   let renderChunkAtPos pos =
         over (mapped . vertPos) (liftA2 (+) ((* 16) <$> pos))
