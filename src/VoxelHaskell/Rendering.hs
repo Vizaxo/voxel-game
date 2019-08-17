@@ -8,8 +8,8 @@ import Control.Lens
 import Data.Distributive (distribute)
 import qualified Data.Map as M
 import qualified Data.Set as S
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text
+import qualified Data.Text.IO as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Vector.Storable as V
 import Linear hiding (angle)
 import qualified Graphics.Rendering.OpenGL as GL
@@ -69,28 +69,11 @@ initOGL = do
   vertexShader <- GL.createShader GL.VertexShader
   fragmentShader <- GL.createShader GL.FragmentShader
 
-  GL.shaderSourceBS vertexShader $= Text.encodeUtf8
-    (Text.pack $ unlines
-      [ "#version 330 core"
-      , "uniform mat4 projection;"
-      , "layout (location = 0) in vec3 aPos;"
-      , "layout (location = 1) in vec4 colour;"
-      , "out vec4 vertexColour;"
-      , "void main(void) {"
-      , "  gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);"
-      , "  vertexColour = colour;"
-      , "}"
-      ])
+  vertSource <- T.readFile "resources/shaders/colour.vert"
+  GL.shaderSourceBS vertexShader $= T.encodeUtf8 vertSource
 
-  GL.shaderSourceBS fragmentShader $= Text.encodeUtf8
-    (Text.pack $ unlines
-      [ "#version 330"
-      , "out vec4 FragColor;"
-      , "in vec4 vertexColour;"
-      , "void main(void) {"
-      , "  FragColor = vertexColour;"
-      , "}"
-      ])
+  fragSource <- T.readFile "resources/shaders/colour.frag"
+  GL.shaderSourceBS fragmentShader $= T.encodeUtf8 fragSource
 
   GL.compileShader vertexShader
   GL.compileShader fragmentShader
