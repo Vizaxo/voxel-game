@@ -22,21 +22,36 @@ import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..), ($=))
 import qualified Graphics.GL as GL
 import qualified Graphics.UI.GLFW as GLFW
-import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with)
+import Foreign (Storable, sizeOf, nullPtr, castPtr, plusPtr, with)
 
 import VoxelHaskell.Block
 import VoxelHaskell.Camera
 import VoxelHaskell.Player
 import VoxelHaskell.World
 
+newtype FaceBitmask = FaceBitmask Word32
+  deriving (Eq, Bits, Storable)
+
+allFaces, noFaces, front, back, left, right, top, bottom :: FaceBitmask
+allFaces = front .|. back .|. left .|. right .|. top .|. bottom
+noFaces  = FaceBitmask 0x00;
+front    = FaceBitmask 0x01;
+back     = FaceBitmask 0x02;
+left     = FaceBitmask 0x04;
+right    = FaceBitmask 0x08;
+top      = FaceBitmask 0x10;
+bottom   = FaceBitmask 0x20;
+
 data Vertex = Vertex
   { _vertPos :: Vector3 Float
   , _colour :: Color4 Float
+  , _faces :: FaceBitmask
   }
 makeLenses ''Vertex
 
 vertexSize :: Int
 vertexSize = sizeOf (undefined :: Vector3 Float) + sizeOf (undefined :: Color4 Float)
+  + sizeOf (undefined :: FaceBitmask)
 
 data MeshCache = MeshCache
   { _mesh :: Maybe ByteString
@@ -172,14 +187,19 @@ renderFrame = do
 
   let posAttribute = GL.AttribLocation 0
       colourAttribute = GL.AttribLocation 1
+      faceBitmaskAttribute = GL.AttribLocation 2
 
   GL.vertexAttribPointer posAttribute $=
-    (GL.ToFloat, GL.VertexArrayDescriptor 3 GL.Float (fromIntegral (7 * sizeOf (0 :: Float))) nullPtr)
+    (GL.ToFloat, GL.VertexArrayDescriptor 3 GL.Float (fromIntegral (8 * sizeOf (0 :: Float))) nullPtr)
   GL.vertexAttribArray posAttribute $= GL.Enabled
 
   GL.vertexAttribPointer colourAttribute $=
-    (GL.ToFloat, GL.VertexArrayDescriptor 4 GL.Float (fromIntegral (7 * sizeOf (0 :: Float))) (plusPtr nullPtr (3 * sizeOf (0 :: Float))))
+    (GL.ToFloat, GL.VertexArrayDescriptor 4 GL.Float (fromIntegral (8 * sizeOf (0 :: Float))) (plusPtr nullPtr (3 * sizeOf (0 :: Float))))
   GL.vertexAttribArray colourAttribute $= GL.Enabled
+
+  GL.vertexAttribPointer faceBitmaskAttribute $=
+    (GL.KeepIntegral, GL.VertexArrayDescriptor 1 GL.UnsignedInt (fromIntegral (8 * sizeOf (0 :: Word32))) (plusPtr nullPtr (7 * sizeOf (0 :: Float))))
+  GL.vertexAttribArray faceBitmaskAttribute $= GL.Enabled
 
   cam <- cameraMatrix
   GL.currentProgram $= Just (renderState ^. shaderProg)
@@ -196,9 +216,10 @@ toFloat = fromIntegral
 
 packWorld :: [Vertex] -> ByteString
 packWorld = LBS.toStrict . toLazyByteString .
-  foldMap (\(Vertex (Vector3 x y z) (Color4 r g b a)) ->
+  foldMap (\(Vertex (Vector3 x y z) (Color4 r g b a) (FaceBitmask faces)) ->
              floatLE x <> floatLE y <> floatLE z <>
-             floatLE r <> floatLE g <> floatLE b <> floatLE a)
+             floatLE r <> floatLE g <> floatLE b <> floatLE a <>
+             word32LE faces)
 
 toChunkPos :: Float -> Int
 toChunkPos x = round x `div` 16
@@ -216,4 +237,4 @@ renderChunk :: Chunk -> [Vertex]
 renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
 
 renderBlock :: Vector3 Int -> Block' -> Vertex
-renderBlock pos (Block colour) = Vertex (toFloat <$> pos) colour
+renderBlock pos (Block colour) = Vertex (toFloat <$> pos) colour allFaces
