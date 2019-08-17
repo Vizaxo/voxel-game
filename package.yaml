@@ -17,6 +17,7 @@ dependencies:
 - distributive
 - multistate
 - Noise
+- stm
 
 default-extensions:
 - LambdaCase
@@ -29,6 +30,7 @@ default-extensions:
 - UndecidableInstances
 - InstanceSigs
 - TypeApplications
+- GeneralizedNewtypeDeriving
 
 library:
   source-dirs: src

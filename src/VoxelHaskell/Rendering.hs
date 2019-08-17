@@ -2,7 +2,7 @@ module VoxelHaskell.Rendering where
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans
+import Control.Monad.State
 import Control.Monad.Trans.MultiState
 import Control.Lens
 import Data.Distributive (distribute)
@@ -21,7 +21,6 @@ import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with)
 import VoxelHaskell.Block
 import VoxelHaskell.Camera
 import VoxelHaskell.Player
-import VoxelHaskell.Utils
 import VoxelHaskell.World
 
 data MeshCache = MeshCache
@@ -106,9 +105,9 @@ initOGL = do
 
 generateMesh
   :: (MonadMultiGet Player m, MonadMultiGet World m
-    , MonadMultiState RenderState m, MonadIO m) => m (V.Vector Float)
+    , MonadState RenderState m) => m (V.Vector Float)
 generateMesh = do
-  renderState <- mGet
+  renderState <- get
 
   let cachedMesh' = renderState ^. cachedMesh
   toRender <- chunksToRender
@@ -117,10 +116,22 @@ generateMesh = do
        , cachedMesh' ^. renderedChunks == toRender) of
     (Just mesh, False, True) -> pure mesh
     _ -> do vertices <- packWorld <$> renderWorld
-            mModify (set (cachedMesh . mesh) (Just vertices))
-            mModify (set (cachedMesh . dirty) False)
-            mModify (set (cachedMesh . renderedChunks) toRender)
+            let cache' = MeshCache (Just vertices) toRender False
+
+            -- Perform the calculations before the STM transaction starts
+            seq vertices (pure ())
+
+            modify (set cachedMesh cache')
             pure vertices
+
+getVertices
+  :: (MonadMultiGet Player m, MonadState RenderState m) => m (V.Vector Float)
+getVertices = do
+  renderState <- get
+  case (renderState ^. cachedMesh . mesh) of
+    Just mesh -> do
+      pure mesh
+    _ -> pure (V.empty)
 
 chunksToRender :: MonadMultiGet Player m => m (S.Set (Vector3 Int))
 chunksToRender = do
@@ -130,22 +141,22 @@ chunksToRender = do
   pure $ S.fromList [Vector3 x y z | x <- [posX - viewDistance..posX + viewDistance], y <- [posY - viewDistance..posY + viewDistance], z <- [posZ - viewDistance..posZ + viewDistance]]
 
 renderFrame
-  :: (MonadMultiGet Player m, MonadMultiGet World m, MonadMultiState RenderState m
+  :: (MonadMultiGet Player m, MonadState RenderState m
     , MonadIO m) => m ()
 renderFrame = do
-  renderState <- mGet
+  renderState <- get
 
   GL.clearColor $= Color4 0 0 0 0
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
-  vertices <- generateMesh
+  vertices <- getVertices
 
   GL.bindVertexArrayObject $= Just (renderState ^. vao)
   GL.bindBuffer GL.ArrayBuffer $= Just (renderState ^. vbo)
   liftIO $ V.unsafeWith vertices $ \v -> GL.bufferData GL.ArrayBuffer $=
     (fromIntegral $ V.length vertices * sizeOf (0 :: Float)
     , v
-    , GL.StaticDraw)
+    , GL.DynamicDraw)
 
   let posAttribute = GL.AttribLocation 0
       colourAttribute = GL.AttribLocation 1
