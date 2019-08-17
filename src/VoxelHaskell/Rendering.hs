@@ -51,6 +51,7 @@ makeWindow :: IO ()
 makeWindow = do
   GLFW.openWindow (GL.Size 400 400) [GLFW.DisplayDepthBits 8] GLFW.Window
   GLFW.windowTitle $= "GLFW Demo"
+  GLFW.swapInterval $= 0
 
   GL.polygonMode $= (GL.Fill, GL.Fill)
   GL.cullFace $= Just GL.Back
