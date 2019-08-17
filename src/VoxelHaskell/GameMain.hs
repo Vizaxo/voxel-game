@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans.MultiState
 import Data.HList.HList
+import Data.Time.Clock
 
 import VoxelHaskell.Input
 import VoxelHaskell.Physics
@@ -23,14 +24,16 @@ gameMain = do
   renderState <- initOGL
   tvar <- newTVarIO renderState
   let seed = 33
+  time <- liftIO getCurrentTime
   void $ runSTMState tvar
     $ runMultiStateT ((0 :: Int) :+: (mkWorld (generateWorld seed))
-                      :+: initialPlayer :+: HNil)
+                      :+: time :+: initialPlayer :+: HNil)
     $ forever (mainLoop tvar)
 
 mainLoop
   :: (MonadMultiState Player m, MonadMultiState World m
-    , MonadState RenderState m, MonadMultiState Int m, MonadIO m)
+    , MonadState RenderState m, MonadMultiState Int m
+    , MonadMultiState UTCTime m, MonadIO m)
   => TVar RenderState -> m ()
 mainLoop tvar = do
   -- Once every 50 frames, try to re-generate the world mesh
@@ -41,7 +44,15 @@ mainLoop tvar = do
     mSet @Int 0
     void $ liftIO $ forkIO (void $ runSTMState tvar $ runMultiStateT (player :+: world :+: HNil) generateMesh)
   mModify @Int (+1)
-
   handleInput
   renderFrame
   mModifyM @Player (tick 0.05)
+  displayFrameTime
+
+displayFrameTime :: (MonadMultiState UTCTime m, MonadIO m) => m ()
+displayFrameTime = do
+  lastTime <- mGet
+  currTime <- liftIO getCurrentTime
+  mSet currTime
+  let diff = diffUTCTime currTime lastTime
+  liftIO $ print diff

@@ -18,6 +18,7 @@ dependencies:
 - multistate
 - Noise
 - stm
+- time
 
 default-extensions:
 - LambdaCase
