@@ -67,21 +67,33 @@ initOGL = do
   GL.bindVertexArrayObject $= Just vao
 
   vertexShader <- GL.createShader GL.VertexShader
+  geometryShader <- GL.createShader GL.GeometryShader
   fragmentShader <- GL.createShader GL.FragmentShader
 
   vertSource <- T.readFile "resources/shaders/colour.vert"
   GL.shaderSourceBS vertexShader $= T.encodeUtf8 vertSource
 
+  geomSource <- T.readFile "resources/shaders/cube.geom"
+  GL.shaderSourceBS geometryShader $= T.encodeUtf8 geomSource
+
   fragSource <- T.readFile "resources/shaders/colour.frag"
   GL.shaderSourceBS fragmentShader $= T.encodeUtf8 fragSource
 
   GL.compileShader vertexShader
+  GL.get (GL.shaderInfoLog vertexShader) >>= liftIO . print
+  GL.compileShader geometryShader
+  GL.get (GL.shaderInfoLog geometryShader) >>= liftIO . print
   GL.compileShader fragmentShader
+  GL.get (GL.shaderInfoLog fragmentShader) >>= liftIO . print
+
 
   shaderProg <- GL.createProgram
+
   GL.attachShader shaderProg vertexShader
+  GL.attachShader shaderProg geometryShader
   GL.attachShader shaderProg fragmentShader
   GL.linkProgram shaderProg
+  GL.get (GL.programInfoLog shaderProg) >>= liftIO . print
   GL.currentProgram $= Just shaderProg
 
   pure (RenderState vao vbo shaderProg emptyCache)
@@ -159,7 +171,7 @@ renderFrame = do
   liftIO $ with (distribute $ cam) $ \ptr ->
     GL.glUniformMatrix4fv projectionLocation 1 0 (castPtr ptr)
 
-  liftIO $ GL.drawArrays GL.Triangles 0 (fromIntegral $ V.length vertices)
+  liftIO $ GL.drawArrays GL.Points 0 (fromIntegral $ V.length vertices)
   liftIO $ GLFW.swapBuffers
 
 toFloat :: Integral n => n -> Float
@@ -182,53 +194,7 @@ renderWorld = do
         (renderChunk ((world ^. getChunk) pos))
 
 renderChunk :: Chunk -> [(Vector3 Float, Color4 Float)]
-renderChunk (Chunk (M.toList -> blocks)) =
-  flip concatMap blocks $ \(pos, block) ->
-    over (mapped . _1) (liftA2 (+) (toFloat <$> pos)) (renderBlock pos block)
+renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
 
-renderBlock :: Vector3 Int -> Block' -> [(Vector3 Float, Color4 Float)]
-renderBlock pos (Block colour) =
-  (,colour) <$>
-  -- front
-  [ Vector3 (-0.5) (-0.5) 0.5
-  , Vector3 0.5 (-0.5) 0.5
-  , Vector3 0.5 0.5 0.5
-  , Vector3 0.5 0.5 0.5
-  , Vector3 (-0.5) 0.5 0.5
-  , Vector3 (-0.5) (-0.5) 0.5
-  -- right
-  , Vector3 0.5 (-0.5) (-0.5)
-  , Vector3 0.5 0.5 (-0.5)
-  , Vector3 0.5 0.5 0.5
-  , Vector3 0.5 0.5 0.5
-  , Vector3 0.5 (-0.5) 0.5
-  , Vector3 0.5 (-0.5) (-0.5)
-  -- top
-  , Vector3 0.5 0.5 0.5
-  , Vector3 0.5 0.5 (-0.5)
-  , Vector3 (-0.5) 0.5 (-0.5)
-  , Vector3 (-0.5) 0.5 (-0.5)
-  , Vector3 (-0.5) 0.5 0.5
-  , Vector3 0.5 0.5 0.5
-  -- back
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  , Vector3 (-0.5) 0.5 (-0.5)
-  , Vector3 0.5 0.5 (-0.5)
-  , Vector3 0.5 0.5 (-0.5)
-  , Vector3 0.5 (-0.5) (-0.5)
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  -- left
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  , Vector3 (-0.5) (-0.5) 0.5
-  , Vector3 (-0.5) 0.5 0.5
-  , Vector3 (-0.5) 0.5 0.5
-  , Vector3 (-0.5) 0.5 (-0.5)
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  -- bottom
-  , Vector3 0.5 (-0.5) 0.5
-  , Vector3 (-0.5) (-0.5) 0.5
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  , Vector3 (-0.5) (-0.5) (-0.5)
-  , Vector3 0.5 (-0.5) (-0.5)
-  , Vector3 0.5 (-0.5) 0.5
-  ]
+renderBlock :: Vector3 Int -> Block' -> (Vector3 Float, Color4 Float)
+renderBlock pos (Block colour) = (toFloat <$> pos, colour)
