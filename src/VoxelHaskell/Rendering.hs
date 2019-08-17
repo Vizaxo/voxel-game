@@ -5,12 +5,18 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans.MultiState
 import Control.Lens
+import Data.Bits
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BS
+import qualified Data.ByteString.Lazy as LBS
+import Data.ByteString.Builder
 import Data.Distributive (distribute)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as T
-import qualified Data.Vector.Storable as V
+import Data.Word
 import Linear hiding (angle)
 import qualified Graphics.Rendering.OpenGL as GL
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..), ($=))
@@ -23,8 +29,17 @@ import VoxelHaskell.Camera
 import VoxelHaskell.Player
 import VoxelHaskell.World
 
+data Vertex = Vertex
+  { _vertPos :: Vector3 Float
+  , _colour :: Color4 Float
+  }
+makeLenses ''Vertex
+
+vertexSize :: Int
+vertexSize = sizeOf (undefined :: Vector3 Float) + sizeOf (undefined :: Color4 Float)
+
 data MeshCache = MeshCache
-  { _mesh :: Maybe (V.Vector Float)
+  { _mesh :: Maybe ByteString
   , _renderedChunks :: S.Set (Vector3 Int)
   , _dirty :: Bool
   }
@@ -101,7 +116,7 @@ initOGL = do
 
 generateMesh
   :: (MonadMultiGet Player m, MonadMultiGet World m
-    , MonadState RenderState m) => m (V.Vector Float)
+    , MonadState RenderState m) => m ByteString
 generateMesh = do
   renderState <- get
 
@@ -121,13 +136,13 @@ generateMesh = do
             pure vertices
 
 getVertices
-  :: (MonadMultiGet Player m, MonadState RenderState m) => m (V.Vector Float)
+  :: (MonadMultiGet Player m, MonadState RenderState m) => m ByteString
 getVertices = do
   renderState <- get
   case (renderState ^. cachedMesh . mesh) of
     Just mesh -> do
       pure mesh
-    _ -> pure (V.empty)
+    _ -> pure BS.empty
 
 chunksToRender :: MonadMultiGet Player m => m (S.Set (Vector3 Int))
 chunksToRender = do
@@ -146,12 +161,13 @@ renderFrame = do
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
   vertices <- getVertices
+  let numVertices = BS.length vertices `div` vertexSize
 
   GL.bindVertexArrayObject $= Just (renderState ^. vao)
   GL.bindBuffer GL.ArrayBuffer $= Just (renderState ^. vbo)
-  liftIO $ V.unsafeWith vertices $ \v -> GL.bufferData GL.ArrayBuffer $=
-    (fromIntegral $ V.length vertices * sizeOf (0 :: Float)
-    , v
+  liftIO $ BS.unsafeUseAsCString vertices $ \vs -> GL.bufferData GL.ArrayBuffer $=
+    (fromIntegral $ BS.length vertices
+    , vs
     , GL.DynamicDraw)
 
   let posAttribute = GL.AttribLocation 0
@@ -172,30 +188,32 @@ renderFrame = do
   liftIO $ with (distribute $ cam) $ \ptr ->
     GL.glUniformMatrix4fv projectionLocation 1 0 (castPtr ptr)
 
-  liftIO $ GL.drawArrays GL.Points 0 (fromIntegral $ V.length vertices)
+  liftIO $ GL.drawArrays GL.Points 0 (fromIntegral numVertices)
   liftIO $ GLFW.swapBuffers
 
 toFloat :: Integral n => n -> Float
 toFloat = fromIntegral
 
-packWorld :: [(Vector3 Float, Color4 Float)] -> V.Vector Float
-packWorld = V.fromList
-  . concatMap (\(Vector3 x y z, Color4 r g b a) -> [x, y, z, r, g, b, a])
+packWorld :: [Vertex] -> ByteString
+packWorld = LBS.toStrict . toLazyByteString .
+  foldMap (\(Vertex (Vector3 x y z) (Color4 r g b a)) ->
+             floatLE x <> floatLE y <> floatLE z <>
+             floatLE r <> floatLE g <> floatLE b <> floatLE a)
 
 toChunkPos :: Float -> Int
 toChunkPos x = round x `div` 16
 
-renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m) => m [(Vector3 Float, Color4 Float)]
+renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m) => m [Vertex]
 renderWorld = do
   world <- mGet
   chunks <- S.toList <$> chunksToRender
   pure $ flip concatMap chunks
     $ \pos ->
-        over (mapped . _1) (liftA2 (+) (toFloat <$> ((* 16) <$> pos)))
+        over (mapped . vertPos) (liftA2 (+) (toFloat <$> ((* 16) <$> pos)))
         (renderChunk ((world ^. getChunk) pos))
 
-renderChunk :: Chunk -> [(Vector3 Float, Color4 Float)]
+renderChunk :: Chunk -> [Vertex]
 renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
 
-renderBlock :: Vector3 Int -> Block' -> (Vector3 Float, Color4 Float)
-renderBlock pos (Block colour) = (toFloat <$> pos, colour)
+renderBlock :: Vector3 Int -> Block' -> Vertex
+renderBlock pos (Block colour) = Vertex (toFloat <$> pos) colour

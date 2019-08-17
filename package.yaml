@@ -19,6 +19,7 @@ dependencies:
 - Noise
 - stm
 - time
+- bytestring
 
 default-extensions:
 - LambdaCase
