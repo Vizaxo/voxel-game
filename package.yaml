@@ -20,6 +20,7 @@ dependencies:
 - stm
 - time
 - bytestring
+- MemoTrie
 
 default-extensions:
 - LambdaCase
@@ -33,6 +34,11 @@ default-extensions:
 - InstanceSigs
 - TypeApplications
 - GeneralizedNewtypeDeriving
+- ScopedTypeVariables
+- TypeOperators
+- TypeFamilies
+- StandaloneDeriving
+- DeriveGeneric
 
 library:
   source-dirs: src

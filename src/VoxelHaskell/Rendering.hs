@@ -30,23 +30,24 @@ import VoxelHaskell.Player
 import VoxelHaskell.World
 
 newtype FaceBitmask = FaceBitmask Word32
-  deriving (Eq, Bits, Storable)
+  deriving (Eq, Show, Bits, Storable)
 
-allFaces, noFaces, front, back, left, right, top, bottom :: FaceBitmask
-allFaces = front .|. back .|. left .|. right .|. top .|. bottom
+allFaces, noFaces, posZ, negZ, posX, negX, top, bottom :: FaceBitmask
+allFaces = top .|. bottom .|. posX .|. negX .|. posZ .|. negZ
 noFaces  = FaceBitmask 0x00;
-front    = FaceBitmask 0x01;
-back     = FaceBitmask 0x02;
-left     = FaceBitmask 0x04;
-right    = FaceBitmask 0x08;
+posZ     = FaceBitmask 0x01;
+negZ     = FaceBitmask 0x02;
+negX     = FaceBitmask 0x04;
+posX     = FaceBitmask 0x08;
 top      = FaceBitmask 0x10;
 bottom   = FaceBitmask 0x20;
 
 data Vertex = Vertex
-  { _vertPos :: Vector3 Float
+  { _vertPos :: Vector3 Int
   , _colour :: Color4 Float
   , _faces :: FaceBitmask
   }
+  deriving Show
 makeLenses ''Vertex
 
 vertexSize :: Int
@@ -72,7 +73,7 @@ data RenderState = RenderState
 makeLenses ''RenderState
 
 viewDistance :: Int
-viewDistance = 2
+viewDistance = 1
 
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
@@ -131,7 +132,7 @@ initOGL = do
 
 generateMesh
   :: (MonadMultiGet Player m, MonadMultiGet World m
-    , MonadState RenderState m) => m ByteString
+    , MonadState RenderState m, MonadIO m) => m ByteString
 generateMesh = do
   renderState <- get
 
@@ -148,6 +149,7 @@ generateMesh = do
             seq vertices (pure ())
 
             modify (set cachedMesh cache')
+            liftIO $ print $ "Generated " <> show (BS.length vertices `div` sizeOf (0 :: Float)) <> " vertices"
             pure vertices
 
 getVertices
@@ -217,24 +219,40 @@ toFloat = fromIntegral
 packWorld :: [Vertex] -> ByteString
 packWorld = LBS.toStrict . toLazyByteString .
   foldMap (\(Vertex (Vector3 x y z) (Color4 r g b a) (FaceBitmask faces)) ->
-             floatLE x <> floatLE y <> floatLE z <>
+             floatLE (fromIntegral x) <> floatLE (fromIntegral y) <> floatLE (fromIntegral z) <>
              floatLE r <> floatLE g <> floatLE b <> floatLE a <>
              word32LE faces)
 
 toChunkPos :: Float -> Int
 toChunkPos x = round x `div` 16
 
-renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m) => m [Vertex]
+faceMapping :: [(Vector3 Int, FaceBitmask)]
+faceMapping =
+  [ (Vector3 0 1 0, top)
+  , (Vector3 0 (-1) 0, bottom)
+  , (Vector3 1 0 0, posX)
+  , (Vector3 (-1) 0 0, negX)
+  , (Vector3 0 0 1, posZ)
+  , (Vector3 0 0 (-1), negZ)
+  ]
+
+renderWorld :: (MonadMultiGet Player m, MonadMultiGet World m, MonadIO m) => m [Vertex]
 renderWorld = do
   world <- mGet
   chunks <- S.toList <$> chunksToRender
-  pure $ flip concatMap chunks
-    $ \pos ->
-        over (mapped . vertPos) (liftA2 (+) (toFloat <$> ((* 16) <$> pos)))
+  let renderChunkAtPos pos =
+        over (mapped . vertPos) (liftA2 (+) ((* 16) <$> pos))
         (renderChunk ((world ^. getChunk) pos))
+  pure $ fmap (cullAdjacentFaces world) $ concatMap renderChunkAtPos  (chunks :: [Vector3 Int])
+  where
+    cullAdjacentFaces world vert =
+        flip (set faces) vert $ foldr (.|.) noFaces (flip fmap faceMapping $ \(dir, face) ->
+          getBlock' world (liftA2 (+) (vert ^. vertPos) dir) & \case
+            Nothing -> face
+            Just _ -> noFaces)
 
 renderChunk :: Chunk -> [Vertex]
 renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
 
 renderBlock :: Vector3 Int -> Block' -> Vertex
-renderBlock pos (Block colour) = Vertex (toFloat <$> pos) colour allFaces
+renderBlock pos (Block colour) = Vertex pos colour allFaces

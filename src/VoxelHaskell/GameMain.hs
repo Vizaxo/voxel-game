@@ -38,12 +38,15 @@ mainLoop
 mainLoop tvar = do
   -- Once every 50 frames, try to re-generate the world mesh
   counter <- mGet @Int
-  when (counter == 50) $ do
+  when (counter == 10) $ do
     player <- mGet @Player
     world <- mGet @World
-    mSet @Int 0
+    mSet @Int 10
+    liftIO $ print "Spawing generator thread"
     void $ liftIO $ forkIO (void $ runSTMState tvar $ runMultiStateT (player :+: world :+: HNil) generateMesh)
   mModify @Int (+1)
+  when (counter == 10000) $ do
+    mSet @Int 0
   handleInput
   renderFrame
   mModifyM @Player (tick 0.05)

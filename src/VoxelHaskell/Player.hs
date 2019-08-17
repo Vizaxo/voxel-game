@@ -42,7 +42,7 @@ touchingGround player = do
 
 initialPlayer :: Player
 initialPlayer = Player
-  { _pos = V3 0 3 0
+  { _pos = V3 20 (-10) 0
   , _vel = V3 0 0 0
   , _pitch = (-30)
   , _yaw = 0

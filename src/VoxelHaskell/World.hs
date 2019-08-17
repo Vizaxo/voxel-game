@@ -5,11 +5,22 @@ import Control.Monad.Trans.MultiState
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Maybe
+import Data.MemoTrie
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
 import Linear
+import GHC.Generics
 
 import VoxelHaskell.Block
 import VoxelHaskell.Utils
+
+deriving instance Generic a => Generic (Vector3 a)
+deriving instance Generic Int
+
+instance (HasTrie a, Generic a) => HasTrie (Vector3 a) where
+  newtype (Vector3 a :->: b) = Vector3Tree { unVector3Tree :: Reg (Vector3 a) :->: b }
+  trie = trieGeneric Vector3Tree
+  untrie = untrieGeneric unVector3Tree
+  enumerate = enumerateGeneric unVector3Tree
 
 data Chunk = Chunk
   { _blocks :: Map (Vector3 Int) Block'
@@ -46,11 +57,11 @@ generateChunk f = Chunk $ M.fromList $ catMaybes
   ]
 
 mkWorld :: (Vector3 Int -> Block) -> World
-mkWorld generator = World $ \(Vector3 chX chY chZ)
+mkWorld generator = World $ memo $ \(Vector3 chX chY chZ)
   -> generateChunk $ \(Vector3 localX localY localZ)
-                     -> generator (Vector3 (chX * 16 + localX)
-                                   (chY * 16 + localY)
-                                   (chZ * 16 + localZ))
+                            -> generator (Vector3 (chX * 16 + localX)
+                                          (chY * 16 + localY)
+                                          (chZ * 16 + localZ))
 
 worldToChunkPos :: Vector3 Int -> Vector3 Int
 worldToChunkPos pos = (`div` 16) <$> pos
@@ -63,3 +74,8 @@ getBlock (v3ToVector3 -> pos) = do
   world <- mGet
   let chunk = (world ^. getChunk) (worldToChunkPos pos)
   pure (M.lookup (toPosInChunk pos) (chunk ^. blocks))
+
+getBlock' :: World -> Vector3 Int -> Block
+getBlock' world pos =
+  let chunk = (world ^. getChunk) (worldToChunkPos pos)
+  in M.lookup (toPosInChunk pos) (chunk ^. blocks)
