@@ -56,13 +56,14 @@ vertexSize = sizeOf (undefined :: Vector3 Float) + sizeOf (undefined :: Color4 F
 
 data MeshCache = MeshCache
   { _mesh :: Maybe ByteString
+  , _chunkVertices :: M.Map (Vector3 Int) ByteString
   , _renderedChunks :: S.Set (Vector3 Int)
   , _dirty :: Bool
   }
 makeLenses ''MeshCache
 
 emptyCache :: MeshCache
-emptyCache = MeshCache Nothing S.empty False
+emptyCache = MeshCache Nothing M.empty S.empty False
 
 data RenderState = RenderState
   { _vao :: GL.VertexArrayObject
@@ -142,13 +143,15 @@ generateMesh = do
        , cachedMesh' ^. dirty
        , cachedMesh' ^. renderedChunks == toRender) of
     (Just mesh, False, True) -> pure mesh
-    _ -> do vertices <- packWorld <$> renderWorld
-            let cache' = MeshCache (Just vertices) toRender False
+    _ -> do chunks <- mapM generateChunkMesh (S.toList toRender)
+            let vertices = BS.concat chunks
 
             -- Perform the calculations before the STM transaction starts
             seq vertices (pure ())
 
-            modify (set cachedMesh cache')
+            modify (over cachedMesh (set renderedChunks toRender
+                                     . set dirty False
+                                     . set mesh (Just vertices)))
             liftIO $ print $ "Generated " <> show (BS.length vertices `div` sizeOf (0 :: Float)) <> " vertices"
             pure vertices
 
@@ -236,17 +239,35 @@ faceMapping =
   , (Vector3 0 0 (-1), negZ)
   ]
 
-renderWorld :: (MonadGet Player m, MonadGet World m, MonadIO m) => m [Vertex]
+renderWorld :: (MonadGet Player m, MonadGet World m) => m [Vertex]
 renderWorld = do
   world <- get
   chunks <- S.toList <$> chunksToRender
   let renderChunkAtPos pos =
-        over (mapped . vertPos) (liftA2 (+) ((* 16) <$> pos))
-        (renderChunk ((world ^. getChunk) pos))
-  pure $ cullEmptyCubes $ fmap (cullAdjacentFaces world)
-    $ concatMap renderChunkAtPos  (chunks :: [Vector3 Int])
+        (renderChunk world pos ((world ^. getChunk) pos))
+  pure $ concatMap renderChunkAtPos chunks
+
+generateChunkMesh
+  :: (MonadGet World m , MonadState RenderState m, MonadIO m)
+  => Vector3 Int -> m ByteString
+generateChunkMesh pos = do
+  renderState <- get
+  case M.lookup pos (renderState ^. cachedMesh . chunkVertices) of
+    Just vs -> pure vs --TODO: when chunks can be edited, need to check if dirty
+    Nothing -> do
+      world <- get
+      let chunk = renderChunk world pos ((world ^. getChunk) pos)
+      let vertices = packWorld chunk
+      modify (over (cachedMesh . chunkVertices) (M.insert pos vertices))
+      pure vertices
+
+renderChunk :: World -> Vector3 Int -> Chunk -> [Vertex]
+renderChunk world pos (Chunk blocks) =
+  cullEmptyCubes
+  $ fmap (cullAdjacentFaces . over vertPos (liftA2 (+) ((* 16) <$> pos)))
+  $ uncurry renderBlock <$> M.toList blocks
   where
-    cullAdjacentFaces world vert =
+    cullAdjacentFaces vert =
       flip (set faces) vert $ foldr (.|.) noFaces $ flip fmap faceMapping $
         \(dir, face) ->
           getBlock' world (liftA2 (+) (vert ^. vertPos) dir) & \case
@@ -254,8 +275,6 @@ renderWorld = do
             Just _ -> noFaces
     cullEmptyCubes = filter (\(Vertex _ _ (FaceBitmask n)) -> n /= 0)
 
-renderChunk :: Chunk -> [Vertex]
-renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
 
 renderBlock :: Vector3 Int -> Block' -> Vertex
 renderBlock pos (Block colour) = Vertex pos colour allFaces
