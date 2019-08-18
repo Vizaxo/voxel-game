@@ -243,13 +243,16 @@ renderWorld = do
   let renderChunkAtPos pos =
         over (mapped . vertPos) (liftA2 (+) ((* 16) <$> pos))
         (renderChunk ((world ^. getChunk) pos))
-  pure $ fmap (cullAdjacentFaces world) $ concatMap renderChunkAtPos  (chunks :: [Vector3 Int])
+  pure $ cullEmptyCubes $ fmap (cullAdjacentFaces world)
+    $ concatMap renderChunkAtPos  (chunks :: [Vector3 Int])
   where
     cullAdjacentFaces world vert =
-        flip (set faces) vert $ foldr (.|.) noFaces (flip fmap faceMapping $ \(dir, face) ->
+      flip (set faces) vert $ foldr (.|.) noFaces $ flip fmap faceMapping $
+        \(dir, face) ->
           getBlock' world (liftA2 (+) (vert ^. vertPos) dir) & \case
             Nothing -> face
-            Just _ -> noFaces)
+            Just _ -> noFaces
+    cullEmptyCubes = filter (\(Vertex _ _ (FaceBitmask n)) -> n /= 0)
 
 renderChunk :: Chunk -> [Vertex]
 renderChunk (Chunk blocks) = uncurry renderBlock <$> M.toList blocks
