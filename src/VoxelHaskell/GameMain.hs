@@ -7,6 +7,7 @@ import Control.Monad.Trans
 import Data.Time.Clock
 
 import VoxelHaskell.Input
+import VoxelHaskell.Mesh
 import VoxelHaskell.Physics
 import VoxelHaskell.Player
 import VoxelHaskell.Rendering
@@ -23,6 +24,7 @@ gameMain = do
   world <- newTVarIO (mkWorld (generateWorld seed))
   player <- newTVarIO initialPlayer
   renderStateTVar <- newTVarIO renderState
+  meshCache <- newTVarIO emptyMeshCache
   time <- liftIO getCurrentTime
 
   -- Chunk mesh generation thread
@@ -30,6 +32,7 @@ gameMain = do
     $ runSTMStateT world
     $ runSTMStateT player
     $ runSTMStateT renderStateTVar
+    $ runSTMStateT meshCache
     $ forever generateChunks
 
   -- Mesh generation thread
@@ -37,6 +40,7 @@ gameMain = do
     $ runSTMStateT world
     $ runSTMStateT player
     $ runSTMStateT renderStateTVar
+    $ runSTMStateT meshCache
     $ forever generateMesh
 
   void
@@ -45,11 +49,13 @@ gameMain = do
     $ runSTMStateT world
     $ runSTMStateT player
     $ runSTMStateT renderStateTVar
+    $ runSTMStateT meshCache
     $ forever mainLoop
 
 mainLoop
   :: (MonadState Player m, MonadState World m
     , MonadState RenderState m, MonadState Int m
+    , MonadGet MeshCache m
     , MonadState UTCTime m, MonadIO m)
   => m ()
 mainLoop = do
