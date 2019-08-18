@@ -47,43 +47,34 @@ makeWindow = do
   GLFW.disableSpecial GLFW.MouseCursor
   GLFW.mousePos $= (GL.Position 0 0)
 
+makeShader :: GL.Program -> GL.ShaderType -> FilePath -> IO ()
+makeShader shaderProg shaderType fileName = do
+  shader <- GL.createShader shaderType
+  source <- T.readFile ("resources/shaders/" <> fileName)
+  GL.shaderSourceBS shader $= T.encodeUtf8 source
+  GL.compileShader shader
+  GL.get (GL.shaderInfoLog shader) >>= liftIO . print
+  GL.attachShader shaderProg shader
+
+makeShaderProgram :: IO GL.Program
+makeShaderProgram = do
+  shaderProg <- GL.createProgram
+
+  makeShader shaderProg GL.VertexShader "colour.vert"
+  makeShader shaderProg GL.GeometryShader "cube.geom"
+  makeShader shaderProg GL.FragmentShader "colour.frag"
+
+  GL.linkProgram shaderProg
+  GL.get (GL.programInfoLog shaderProg) >>= liftIO . print
+  pure shaderProg
+
 initOGL :: IO RenderState
 initOGL = do
   vao <- GL.genObjectName
-  vbo <- GL.genObjectName
-
   GL.bindVertexArrayObject $= Just vao
-
-  vertexShader <- GL.createShader GL.VertexShader
-  geometryShader <- GL.createShader GL.GeometryShader
-  fragmentShader <- GL.createShader GL.FragmentShader
-
-  vertSource <- T.readFile "resources/shaders/colour.vert"
-  GL.shaderSourceBS vertexShader $= T.encodeUtf8 vertSource
-
-  geomSource <- T.readFile "resources/shaders/cube.geom"
-  GL.shaderSourceBS geometryShader $= T.encodeUtf8 geomSource
-
-  fragSource <- T.readFile "resources/shaders/colour.frag"
-  GL.shaderSourceBS fragmentShader $= T.encodeUtf8 fragSource
-
-  GL.compileShader vertexShader
-  GL.get (GL.shaderInfoLog vertexShader) >>= liftIO . print
-  GL.compileShader geometryShader
-  GL.get (GL.shaderInfoLog geometryShader) >>= liftIO . print
-  GL.compileShader fragmentShader
-  GL.get (GL.shaderInfoLog fragmentShader) >>= liftIO . print
-
-
-  shaderProg <- GL.createProgram
-
-  GL.attachShader shaderProg vertexShader
-  GL.attachShader shaderProg geometryShader
-  GL.attachShader shaderProg fragmentShader
-  GL.linkProgram shaderProg
-  GL.get (GL.programInfoLog shaderProg) >>= liftIO . print
+  vbo <- GL.genObjectName
+  shaderProg <- makeShaderProgram
   GL.currentProgram $= Just shaderProg
-
   pure (RenderState vao vbo shaderProg)
 
 renderFrame
