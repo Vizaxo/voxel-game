@@ -46,7 +46,7 @@ data Vertex = Vertex
 makeLenses ''Vertex
 
 data MeshCache = MeshCache
-  { _mesh :: Maybe ByteString
+  { _worldMesh :: Maybe ByteString
   , _chunkVertices :: M.Map (Vector3 Int) ByteString
   , _renderedChunks :: S.Set (Vector3 Int)
   , _dirty :: Bool
@@ -73,39 +73,55 @@ chunksToRender = do
       , y <- [chPos^._y - viewDistance..chPos^._y + viewDistance]
       , z <- [chPos^._z - viewDistance..chPos^._z + viewDistance]]
 
-generateMesh
+generateWorldMesh
   :: (MonadGet Player m, MonadGet World m
     , MonadState MeshCache m, MonadIO m) => m ByteString
-generateMesh = do
+generateWorldMesh = do
   meshCache <- get
   toRender <- chunksToRender
-  case (meshCache ^. mesh
+  case (meshCache ^. worldMesh
        , meshCache ^. dirty
        , meshCache ^. renderedChunks == S.fromList toRender) of
-    (Just mesh, False, True) -> pure mesh
-    _ -> do --Generate the mesh based on pre-generated chunks
-            let chunks = catMaybes $ flip M.lookup
-                         (meshCache ^. chunkVertices)
-                         <$> toRender
-            let vertices = BS.concat chunks
+    (Just worldMesh, False, True) -> pure worldMesh
+    _ -> do --Generate the world mesh based on chunks vertex cache
+      let chunks = catMaybes $ flip M.lookup
+                   (meshCache ^. chunkVertices)
+                   <$> toRender
+          vertices = BS.concat chunks
 
-            -- Perform the calculations before the STM transaction starts
-            seq vertices (pure ())
+      -- Perform the calculations before the STM transaction starts
+      seq vertices (pure ())
 
-            modify (set renderedChunks (S.fromList toRender)
-                     . set dirty False
-                     . set mesh (Just vertices))
-            liftIO $ print $ "Generated " <> show (BS.length vertices `div` sizeOf (0 :: Float)) <> " vertices"
-            pure vertices
+      modify (set renderedChunks (S.fromList toRender)
+               . set dirty False
+               . set worldMesh (Just vertices))
+      liftIO $ print $ "Generated "
+        <> show (BS.length vertices `div` sizeOf (0 :: Float))
+        <> " vertices"
+      pure vertices
 
-getMeshVertices :: MonadGet MeshCache m => m ByteString
-getMeshVertices = fromMaybe BS.empty . view mesh <$> get
+getWorldMesh :: MonadGet MeshCache m => m ByteString
+getWorldMesh = fromMaybe BS.empty . view worldMesh <$> get
+
+-- | When run continually in a separate thread, it will populate the
+-- chunk mesh cache with the chunks nearest the player
+generateChunkVertices
+  :: (MonadGet World m, MonadState MeshCache m, MonadGet Player m, MonadIO m)
+  => m ()
+generateChunkVertices = mapMUntil generateChunkVerticesAt =<< chunksToRender
+  where
+    -- Restart generation each time a chunk is successfully generated so
+    -- that when the player moves the next chunks generated are near them
+    mapMUntil mf [] = pure ()
+    mapMUntil mf (x:xs) = do
+      res <- mf x
+      unless res (mapMUntil mf xs)
 
 -- Returns whether a new chunk's mesh was inserted into the cache
-generateChunkMesh
+generateChunkVerticesAt
   :: (MonadGet World m , MonadState MeshCache m, MonadIO m)
   => Vector3 Int -> m Bool
-generateChunkMesh pos = do
+generateChunkVerticesAt pos = do
   meshCache <- get
   case M.lookup pos (meshCache ^. chunkVertices) of
     Just vs -> pure False --TODO: when chunks can be edited, need to check if dirty
@@ -121,23 +137,11 @@ generateChunkMesh pos = do
 packVertices :: [Vertex] -> ByteString
 packVertices = LBS.toStrict . toLazyByteString .
   foldMap (\(Vertex (Vector3 x y z) (Color4 r g b a) (FaceBitmask faces)) ->
-             floatLE (fromIntegral x) <> floatLE (fromIntegral y) <> floatLE (fromIntegral z) <>
-             floatLE r <> floatLE g <> floatLE b <> floatLE a <>
-             word32LE faces)
-
--- | When run continually in a separate thread, it will populate the
--- chunk mesh cache with the chunks nearest the player
-generateChunks
-  :: (MonadGet World m, MonadState MeshCache m, MonadGet Player m, MonadIO m)
-  => m ()
-generateChunks = mapMUntil generateChunkMesh =<< chunksToRender
-  where
-    -- Restart generation each time a chunk is successfully generated
-    -- so when the player moves the next chunks generated is near them
-    mapMUntil mf [] = pure ()
-    mapMUntil mf (x:xs) = do
-      res <- mf x
-      unless res (mapMUntil mf xs)
+             floatLE (fromIntegral x)
+             <> floatLE (fromIntegral y)
+             <> floatLE (fromIntegral z)
+             <> floatLE r <> floatLE g <> floatLE b <> floatLE a
+             <> word32LE faces)
 
 faceDirections :: [(Vector3 Int, FaceBitmask)]
 faceDirections =

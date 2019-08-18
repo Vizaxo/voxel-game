@@ -95,7 +95,7 @@ renderFrame = do
   GL.clearColor $= Color4 0 0 0 0
   liftIO $ GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
-  vertices <- getMeshVertices
+  vertices <- getWorldMesh
   let numVertices = BS.length vertices `div` vertexSize
 
   GL.bindVertexArrayObject $= Just (renderState ^. vao)

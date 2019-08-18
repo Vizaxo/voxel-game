@@ -27,21 +27,21 @@ gameMain = do
   meshCache <- newTVarIO emptyMeshCache
   time <- liftIO getCurrentTime
 
-  -- Chunk mesh generation thread
+  -- Chunk vertex generation thread
   liftIO $ forkIO $ void
     $ runSTMStateT world
     $ runSTMStateT player
     $ runSTMStateT renderStateTVar
     $ runSTMStateT meshCache
-    $ forever generateChunks
+    $ forever generateChunkVertices
 
-  -- Mesh generation thread
+  -- World mesh generation thread
   liftIO $ forkIO $ void
     $ runSTMStateT world
     $ runSTMStateT player
     $ runSTMStateT renderStateTVar
     $ runSTMStateT meshCache
-    $ forever generateMesh
+    $ forever generateWorldMesh
 
   void
     $ runSTMStateT' (0 :: Int)
