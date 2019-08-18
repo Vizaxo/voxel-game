@@ -17,7 +17,6 @@ import VoxelHaskell.WorldGenerator
 
 gameMain :: IO ()
 gameMain = do
-  initRendering
   makeWindow
   renderState <- initOGL
   let seed = 33

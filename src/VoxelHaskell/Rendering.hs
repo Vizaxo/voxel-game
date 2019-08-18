@@ -31,21 +31,30 @@ data RenderState = RenderState
   }
 makeLenses ''RenderState
 
-initRendering :: IO ()
-initRendering = void $ GLFW.initialize
-
 makeWindow :: IO ()
 makeWindow = do
+  GLFW.initialize
   GLFW.openWindow (GL.Size 400 400) [GLFW.DisplayDepthBits 8] GLFW.Window
-  GLFW.windowTitle $= "GLFW Demo"
+  GLFW.windowTitle $= "Voxel game"
+
+  -- Disable vsync
   GLFW.swapInterval $= 0
 
+  GLFW.disableSpecial GLFW.MouseCursor
+  GLFW.mousePos $= (GL.Position 0 0)
+
+initOGL :: IO RenderState
+initOGL = do
   GL.polygonMode $= (GL.Fill, GL.Fill)
   GL.cullFace $= Just GL.Back
   GL.depthFunc $= Just GL.Less
 
-  GLFW.disableSpecial GLFW.MouseCursor
-  GLFW.mousePos $= (GL.Position 0 0)
+  vao <- GL.genObjectName
+  GL.bindVertexArrayObject $= Just vao
+  vbo <- GL.genObjectName
+  shaderProg <- makeShaderProgram
+  GL.currentProgram $= Just shaderProg
+  pure (RenderState vao vbo shaderProg)
 
 makeShader :: GL.Program -> GL.ShaderType -> FilePath -> IO ()
 makeShader shaderProg shaderType fileName = do
@@ -67,15 +76,6 @@ makeShaderProgram = do
   GL.linkProgram shaderProg
   GL.get (GL.programInfoLog shaderProg) >>= liftIO . print
   pure shaderProg
-
-initOGL :: IO RenderState
-initOGL = do
-  vao <- GL.genObjectName
-  GL.bindVertexArrayObject $= Just vao
-  vbo <- GL.genObjectName
-  shaderProg <- makeShaderProgram
-  GL.currentProgram $= Just shaderProg
-  pure (RenderState vao vbo shaderProg)
 
 renderFrame
   :: (MonadGet Player m, MonadGet RenderState m, MonadGet MeshCache m
