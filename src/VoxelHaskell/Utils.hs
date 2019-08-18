@@ -23,3 +23,6 @@ v3ToVector3 (V3 x y z) = Vector3 x y z
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM mb ma = mb >>= flip when ma
+
+magnitudeSquared :: Num a => V3 a -> a
+magnitudeSquared (V3 x y z) = x * x + y * y + z * z

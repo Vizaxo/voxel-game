@@ -12,6 +12,8 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.ByteString.Builder
 import Data.Distributive (distribute)
 import qualified Data.Map as M
+import Data.Maybe
+import Data.List
 import qualified Data.Set as S
 import qualified Data.Text.IO as T
 import qualified Data.Text.Encoding as T
@@ -26,8 +28,9 @@ import Foreign (Storable, sizeOf, nullPtr, castPtr, plusPtr, with)
 import VoxelHaskell.Block
 import VoxelHaskell.Camera
 import VoxelHaskell.Player
-import VoxelHaskell.World
 import VoxelHaskell.STMState
+import VoxelHaskell.Utils
+import VoxelHaskell.World
 
 newtype FaceBitmask = FaceBitmask Word32
   deriving (Eq, Show, Bits, Storable)
@@ -74,7 +77,7 @@ data RenderState = RenderState
 makeLenses ''RenderState
 
 viewDistance :: Int
-viewDistance = 2
+viewDistance = 10
 
 initRendering :: IO ()
 initRendering = void $ GLFW.initialize
@@ -141,15 +144,18 @@ generateMesh = do
   toRender <- chunksToRender
   case (cachedMesh' ^. mesh
        , cachedMesh' ^. dirty
-       , cachedMesh' ^. renderedChunks == toRender) of
+       , cachedMesh' ^. renderedChunks == S.fromList toRender) of
     (Just mesh, False, True) -> pure mesh
-    _ -> do chunks <- mapM generateChunkMesh (S.toList toRender)
+    _ -> do --Generate the mesh based on pre-generated chunks
+            let chunks = catMaybes $ flip M.lookup
+                         (renderState ^. cachedMesh . chunkVertices)
+                         <$> toRender
             let vertices = BS.concat chunks
 
             -- Perform the calculations before the STM transaction starts
             seq vertices (pure ())
 
-            modify (over cachedMesh (set renderedChunks toRender
+            modify (over cachedMesh (set renderedChunks (S.fromList toRender)
                                      . set dirty False
                                      . set mesh (Just vertices)))
             liftIO $ print $ "Generated " <> show (BS.length vertices `div` sizeOf (0 :: Float)) <> " vertices"
@@ -164,12 +170,16 @@ getVertices = do
       pure mesh
     _ -> pure BS.empty
 
-chunksToRender :: MonadGet Player m => m (S.Set (Vector3 Int))
+chunksToRender :: MonadGet Player m => m [Vector3 Int]
 chunksToRender = do
   player <- get
-  let (V3 (toChunkPos -> posX) (toChunkPos -> posY) (toChunkPos -> posZ))
-        = player ^. pos
-  pure $ S.fromList [Vector3 x y z | x <- [posX - viewDistance..posX + viewDistance], y <- [posY - viewDistance..posY + viewDistance], z <- [posZ - viewDistance..posZ + viewDistance]]
+  let chPos = toChunkPos <$> (player ^. pos)
+      distanceToPlayer (vector3ToV3 -> v) = magnitudeSquared $ v - chPos
+  pure $ sortOn distanceToPlayer
+    $ [Vector3 x y z
+      | x <- [chPos^._x - viewDistance..chPos^._x + viewDistance]
+      , y <- [chPos^._y - viewDistance..chPos^._y + viewDistance]
+      , z <- [chPos^._z - viewDistance..chPos^._z + viewDistance]]
 
 renderFrame
   :: (MonadGet Player m, MonadState RenderState m
@@ -242,24 +252,42 @@ faceMapping =
 renderWorld :: (MonadGet Player m, MonadGet World m) => m [Vertex]
 renderWorld = do
   world <- get
-  chunks <- S.toList <$> chunksToRender
+  chunks <- chunksToRender
   let renderChunkAtPos pos =
         (renderChunk world pos ((world ^. getChunk) pos))
   pure $ concatMap renderChunkAtPos chunks
 
+-- | When run continually in a separate thread, it will populate the
+-- chunk mesh cache with the chunks nearest the player
+generateChunks
+  :: (MonadGet World m, MonadState RenderState m, MonadGet Player m, MonadIO m)
+  => m ()
+generateChunks = mapMUntil generateChunkMesh =<< chunksToRender
+  where
+    -- Restart generation each time a chunk is successfully generated
+    -- so when the player moves the next chunks generated is near them
+    mapMUntil mf [] = pure ()
+    mapMUntil mf (x:xs) = do
+      res <- mf x
+      unless res (mapMUntil mf xs)
+
 generateChunkMesh
   :: (MonadGet World m , MonadState RenderState m, MonadIO m)
-  => Vector3 Int -> m ByteString
+  => Vector3 Int -> m Bool
 generateChunkMesh pos = do
   renderState <- get
   case M.lookup pos (renderState ^. cachedMesh . chunkVertices) of
-    Just vs -> pure vs --TODO: when chunks can be edited, need to check if dirty
+    Just vs -> pure False --TODO: when chunks can be edited, need to check if dirty
     Nothing -> do
+      liftIO $ putStrLn $ "Generating chunk mesh at pos " <> show pos
       world <- get
       let chunk = renderChunk world pos ((world ^. getChunk) pos)
       let vertices = packWorld chunk
-      modify (over (cachedMesh . chunkVertices) (M.insert pos vertices))
-      pure vertices
+      seq vertices (pure ())
+      modify (over cachedMesh
+              (set dirty True
+                . over chunkVertices (M.insert pos vertices)))
+      pure True
 
 renderChunk :: World -> Vector3 Int -> Chunk -> [Vertex]
 renderChunk world pos (Chunk blocks) =

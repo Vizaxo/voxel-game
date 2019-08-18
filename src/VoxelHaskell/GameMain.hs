@@ -25,6 +25,13 @@ gameMain = do
   renderStateTVar <- newTVarIO renderState
   time <- liftIO getCurrentTime
 
+  -- Chunk mesh generation thread
+  liftIO $ forkIO $ void
+    $ runSTMStateT world
+    $ runSTMStateT player
+    $ runSTMStateT renderStateTVar
+    $ forever generateChunks
+
   -- Mesh generation thread
   liftIO $ forkIO $ void
     $ runSTMStateT world
