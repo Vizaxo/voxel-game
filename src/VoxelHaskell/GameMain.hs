@@ -7,10 +7,12 @@ import Control.Monad.Trans
 import Data.Time.Clock
 
 import VoxelHaskell.Input
-import VoxelHaskell.Mesh
 import VoxelHaskell.Physics
 import VoxelHaskell.Player
-import VoxelHaskell.Rendering
+import VoxelHaskell.Rendering.Frame
+import VoxelHaskell.Rendering.Init
+import VoxelHaskell.Rendering.Mesh
+import VoxelHaskell.Rendering.Types
 import VoxelHaskell.STMState
 import VoxelHaskell.World
 import VoxelHaskell.WorldGenerator

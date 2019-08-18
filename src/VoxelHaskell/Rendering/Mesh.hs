@@ -1,4 +1,4 @@
-module VoxelHaskell.Mesh where
+module VoxelHaskell.Rendering.Mesh where
 
 import Control.Applicative
 import Control.Monad
@@ -13,48 +13,16 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import qualified Data.Set as S
-import Data.Word
 import Linear hiding (angle)
 import Graphics.Rendering.OpenGL (Vector3(..), Color4(..))
-import Foreign (Storable, sizeOf)
+import Foreign (sizeOf)
 
 import VoxelHaskell.Block
 import VoxelHaskell.Player
+import VoxelHaskell.Rendering.Types
 import VoxelHaskell.STMState
 import VoxelHaskell.Utils
 import VoxelHaskell.World
-
-newtype FaceBitmask = FaceBitmask Word32
-  deriving (Eq, Show, Bits, Storable)
-
-allFaces, noFaces, posZ, negZ, posX, negX, top, bottom :: FaceBitmask
-allFaces = top .|. bottom .|. posX .|. negX .|. posZ .|. negZ
-noFaces  = FaceBitmask 0x00;
-posZ     = FaceBitmask 0x01;
-negZ     = FaceBitmask 0x02;
-negX     = FaceBitmask 0x04;
-posX     = FaceBitmask 0x08;
-top      = FaceBitmask 0x10;
-bottom   = FaceBitmask 0x20;
-
-data Vertex = Vertex
-  { _vertPos :: Vector3 Int
-  , _colour :: Color4 Float
-  , _faces :: FaceBitmask
-  }
-  deriving Show
-makeLenses ''Vertex
-
-data MeshCache = MeshCache
-  { _worldMesh :: Maybe ByteString
-  , _chunkVertices :: M.Map (Vector3 Int) ByteString
-  , _renderedChunks :: S.Set (Vector3 Int)
-  , _dirty :: Bool
-  }
-makeLenses ''MeshCache
-
-emptyMeshCache :: MeshCache
-emptyMeshCache = MeshCache Nothing M.empty S.empty False
 
 viewDistance :: Int
 viewDistance = 10

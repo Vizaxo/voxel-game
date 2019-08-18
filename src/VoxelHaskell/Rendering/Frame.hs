@@ -1,81 +1,22 @@
-module VoxelHaskell.Rendering where
+module VoxelHaskell.Rendering.Frame where
 
-import Control.Monad
 import Control.Monad.Trans
 import Control.Lens
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Distributive (distribute)
-import qualified Data.Text.IO as T
-import qualified Data.Text.Encoding as T
 import Data.Word
+import Graphics.Rendering.OpenGL (Color4(..), ($=))
 import qualified Graphics.Rendering.OpenGL as GL
-import Graphics.Rendering.OpenGL (Vector3(..), Color4(..), ($=))
 import qualified Graphics.GL as GL
 import qualified Graphics.UI.GLFW as GLFW
 import Foreign (sizeOf, nullPtr, castPtr, plusPtr, with)
 
 import VoxelHaskell.Camera
 import VoxelHaskell.Player
+import VoxelHaskell.Rendering.Mesh
+import VoxelHaskell.Rendering.Types
 import VoxelHaskell.STMState
-import VoxelHaskell.Mesh
-
-vertexSize :: Int
-vertexSize = sizeOf (undefined :: Vector3 Float) + sizeOf (undefined :: Color4 Float)
-  + sizeOf (undefined :: FaceBitmask)
-
-data RenderState = RenderState
-  { _vao :: GL.VertexArrayObject
-  , _vbo :: GL.BufferObject
-  , _shaderProg :: GL.Program
-  }
-makeLenses ''RenderState
-
-makeWindow :: IO ()
-makeWindow = do
-  GLFW.initialize
-  GLFW.openWindow (GL.Size 400 400) [GLFW.DisplayDepthBits 8] GLFW.Window
-  GLFW.windowTitle $= "Voxel game"
-
-  -- Disable vsync
-  GLFW.swapInterval $= 0
-
-  GLFW.disableSpecial GLFW.MouseCursor
-  GLFW.mousePos $= (GL.Position 0 0)
-
-initOGL :: IO RenderState
-initOGL = do
-  GL.polygonMode $= (GL.Fill, GL.Fill)
-  GL.cullFace $= Just GL.Back
-  GL.depthFunc $= Just GL.Less
-
-  vao <- GL.genObjectName
-  GL.bindVertexArrayObject $= Just vao
-  vbo <- GL.genObjectName
-  shaderProg <- makeShaderProgram
-  GL.currentProgram $= Just shaderProg
-  pure (RenderState vao vbo shaderProg)
-
-makeShader :: GL.Program -> GL.ShaderType -> FilePath -> IO ()
-makeShader shaderProg shaderType fileName = do
-  shader <- GL.createShader shaderType
-  source <- T.readFile ("resources/shaders/" <> fileName)
-  GL.shaderSourceBS shader $= T.encodeUtf8 source
-  GL.compileShader shader
-  GL.get (GL.shaderInfoLog shader) >>= liftIO . print
-  GL.attachShader shaderProg shader
-
-makeShaderProgram :: IO GL.Program
-makeShaderProgram = do
-  shaderProg <- GL.createProgram
-
-  makeShader shaderProg GL.VertexShader "colour.vert"
-  makeShader shaderProg GL.GeometryShader "cube.geom"
-  makeShader shaderProg GL.FragmentShader "colour.frag"
-
-  GL.linkProgram shaderProg
-  GL.get (GL.programInfoLog shaderProg) >>= liftIO . print
-  pure shaderProg
 
 renderFrame
   :: (MonadGet Player m, MonadGet RenderState m, MonadGet MeshCache m
