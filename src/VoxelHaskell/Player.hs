@@ -19,7 +19,7 @@ data Player = Player
 makeLenses ''Player
 
 playerHeight :: Float
-playerHeight = 1.5
+playerHeight = 10
 
 jumpSpeed :: Float
 jumpSpeed = 4

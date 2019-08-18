@@ -8,7 +8,7 @@ import VoxelHaskell.STMState
 import VoxelHaskell.Utils
 
 playerToCamera :: V3 Float
-playerToCamera = V3 0 1.5 0
+playerToCamera = V3 0 playerHeight 0
 
 viewMatrix :: MonadGet Player m => m (M44 Float)
 viewMatrix = do
